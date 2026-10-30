@@ -158,8 +158,8 @@ export default function Hero({
                   </Button>
                 </ShineBorder>
               </Link>
-              <Link to={"https://github.com/michaelshimeles/youpac-ai"} target="_blank">
-                <Button className="rounded-xl" variant="outline">View on GitHub</Button>
+              <Link to="/sign-up">
+                <Button className="rounded-xl" variant="outline">Start Creating</Button>
               </Link>
             </div>
           </div>
