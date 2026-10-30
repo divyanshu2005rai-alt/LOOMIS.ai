@@ -2,14 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles, Palette, Video, MessageSquare, Twitter, FileText, CheckCircle2 } from "lucide-react";
-
-// Spectrum of quilling circle colors inspired by the artwork
-const SWIRL_COLORS = [
-  "#FF3366", "#FF5E36", "#FFAA00", "#FFD600", 
-  "#AEEA00", "#00E676", "#00B0FF", "#2979FF", 
-  "#651FFF", "#D500F9", "#FF1744", "#FF9100"
-];
+import { Sparkles, Palette, Twitter, FileText, CheckCircle2 } from "lucide-react";
 
 // Interactive floating feature chips that sprout from the swirl
 const CREATIVE_TAGS = [
@@ -19,12 +12,73 @@ const CREATIVE_TAGS = [
   { id: 4, label: "Viral Tweets & Threads", icon: Twitter, color: "#845EC2", x: "38%", y: "14%", delay: 0.8 },
 ];
 
+// Outer quilling color bubbles
+const OUTER_BUBBLES = [
+  { cx: 160, cy: 50, r: 36, fill: "#FF3366", freq: 440 },
+  { cx: 215, cy: 75, r: 38, fill: "#FF5E36", freq: 490 },
+  { cx: 255, cy: 125, r: 40, fill: "#FFAA00", freq: 550 },
+  { cx: 260, cy: 185, r: 38, fill: "#00E676", freq: 590 },
+  { cx: 235, cy: 240, r: 36, fill: "#00B0FF", freq: 660 },
+  { cx: 185, cy: 270, r: 34, fill: "#2979FF", freq: 730 },
+  { cx: 130, cy: 270, r: 35, fill: "#651FFF", freq: 800 },
+  { cx: 80, cy: 235, r: 38, fill: "#9B5DE5", freq: 880 },
+  { cx: 55, cy: 180, r: 37, fill: "#D500F9", freq: 620 },
+  { cx: 65, cy: 120, r: 38, fill: "#FF1744", freq: 520 },
+  { cx: 105, cy: 70, r: 36, fill: "#FF70A6", freq: 460 },
+];
+
+// Inner swirling color bubbles
+const INNER_BUBBLES = [
+  { cx: 135, cy: 120, r: 32, fill: "#FFD600", freq: 500 },
+  { cx: 185, cy: 115, r: 34, fill: "#FF5E36", freq: 560 },
+  { cx: 210, cy: 160, r: 35, fill: "#00F5D4", freq: 630 },
+  { cx: 175, cy: 205, r: 36, fill: "#3A86FF", freq: 700 },
+  { cx: 125, cy: 195, r: 33, fill: "#D500F9", freq: 770 },
+  { cx: 115, cy: 155, r: 32, fill: "#FF3366", freq: 840 },
+  { cx: 160, cy: 160, r: 42, fill: "#FF9100", freq: 600 },
+];
+
+// Tiny accent micro-bubbles for dense quilling texture
+const ACCENT_BUBBLES = [
+  { cx: 120, cy: 45, r: 16, fill: "#00F5D4", freq: 650 },
+  { cx: 200, cy: 45, r: 18, fill: "#FFD166", freq: 720 },
+  { cx: 275, cy: 95, r: 17, fill: "#FF5E36", freq: 780 },
+  { cx: 280, cy: 155, r: 18, fill: "#06D6A0", freq: 820 },
+  { cx: 260, cy: 215, r: 16, fill: "#118AB2", freq: 890 },
+  { cx: 210, cy: 265, r: 17, fill: "#8338EC", freq: 940 },
+  { cx: 105, cy: 260, r: 17, fill: "#FF006E", freq: 750 },
+  { cx: 50, cy: 215, r: 18, fill: "#FFBE0B", freq: 680 },
+  { cx: 40, cy: 145, r: 17, fill: "#FB5607", freq: 610 },
+  { cx: 80, cy: 95, r: 16, fill: "#3A86FF", freq: 540 },
+];
+
+// Soft synth droplet bubble pop sound using pure Web Audio API
+function playBubbleSound(freq = 550) {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.35, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.025, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.08);
+  } catch {}
+}
+
 export default function WatercolorCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();
   const [mouse, setMouse] = useState({ x: 0.5, y: 0.5, active: false });
-  const [activeChip, setActiveChip] = useState<number | null>(null);
+  const [hoveredBubble, setHoveredBubble] = useState<string | null>(null);
 
   // ── Wet Droplets & Condensation Canvas Simulation (Image 2) ──
   useEffect(() => {
@@ -179,8 +233,8 @@ export default function WatercolorCanvas() {
               shouldReduceMotion
                 ? false
                 : {
-                    rotate: [0, 4, -4, 0],
-                    scale: [1, 1.025, 1],
+                    rotate: [0, 3, -3, 0],
+                    scale: [1, 1.02, 1],
                   }
             }
             transition={{
@@ -190,7 +244,7 @@ export default function WatercolorCanvas() {
             }}
             className="relative flex h-56 w-56 items-center justify-center sm:h-72 sm:w-72 md:h-80 md:w-80"
           >
-            {/* Concentric rotating SVG spirals */}
+            {/* SVG Concentric Swirl of Interactive Quilled Bubbles */}
             <svg
               viewBox="0 0 320 320"
               className="h-full w-full overflow-visible drop-shadow-xl"
@@ -206,27 +260,38 @@ export default function WatercolorCanvas() {
               {/* Ambient radial glow core */}
               <circle cx="160" cy="160" r="140" fill="url(#swirl-glow)" />
 
-              {/* Outer quilling discs */}
-              {[
-                { cx: 160, cy: 50, r: 36, fill: "#FF3366" },
-                { cx: 215, cy: 75, r: 38, fill: "#FF5E36" },
-                { cx: 255, cy: 125, r: 40, fill: "#FFAA00" },
-                { cx: 260, cy: 185, r: 38, fill: "#00E676" },
-                { cx: 235, cy: 240, r: 36, fill: "#00B0FF" },
-                { cx: 185, cy: 270, r: 34, fill: "#2979FF" },
-                { cx: 130, cy: 270, r: 35, fill: "#651FFF" },
-                { cx: 80, cy: 235, r: 38, fill: "#9B5DE5" },
-                { cx: 55, cy: 180, r: 37, fill: "#D500F9" },
-                { cx: 65, cy: 120, r: 38, fill: "#FF1744" },
-                { cx: 105, cy: 70, r: 36, fill: "#FF70A6" },
-              ].map((c, i) => (
-                <g key={i}>
+              {/* ── Outer Quilling Discs with Tactile Hover Jiggle ── */}
+              {OUTER_BUBBLES.map((c, i) => (
+                <motion.g
+                  key={`outer-${i}`}
+                  style={{
+                    transformOrigin: `${c.cx}px ${c.cy}px`,
+                    cursor: "pointer",
+                  }}
+                  whileHover={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          scale: 1.25,
+                          rotate: [0, -7, 7, -3, 0],
+                          transition: { type: "spring", stiffness: 450, damping: 14 },
+                        }
+                  }
+                  whileTap={{ scale: 0.92 }}
+                  onHoverStart={() => {
+                    setHoveredBubble(`outer-${i}`);
+                    playBubbleSound(c.freq);
+                  }}
+                  onHoverEnd={() => setHoveredBubble(null)}
+                  className="transition-opacity duration-200"
+                >
                   <circle
                     cx={c.cx}
                     cy={c.cy}
                     r={c.r}
                     fill={c.fill}
-                    fillOpacity="0.85"
+                    fillOpacity="0.9"
+                    className="transition-all duration-300 hover:filter hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.7)]"
                   />
                   <circle
                     cx={c.cx}
@@ -235,29 +300,93 @@ export default function WatercolorCanvas() {
                     fill="none"
                     stroke="#FFFFFF"
                     strokeWidth="2.5"
-                    strokeOpacity="0.6"
+                    strokeOpacity="0.65"
                   />
                   <circle
                     cx={c.cx}
                     cy={c.cy}
                     r={c.r * 0.35}
                     fill="#FFFFFF"
-                    fillOpacity="0.4"
+                    fillOpacity="0.45"
                   />
-                </g>
+                </motion.g>
               ))}
 
-              {/* Inner swirling rings */}
-              {[
-                { cx: 135, cy: 120, r: 32, fill: "#FFD600" },
-                { cx: 185, cy: 115, r: 34, fill: "#FF5E36" },
-                { cx: 210, cy: 160, r: 35, fill: "#00F5D4" },
-                { cx: 175, cy: 205, r: 36, fill: "#3A86FF" },
-                { cx: 125, cy: 195, r: 33, fill: "#D500F9" },
-                { cx: 115, cy: 155, r: 32, fill: "#FF3366" },
-                { cx: 160, cy: 160, r: 42, fill: "#FF9100" },
-              ].map((c, i) => (
-                <g key={`inner-${i}`}>
+              {/* ── Inner Swirling Discs with Tactile Hover Jiggle ── */}
+              {INNER_BUBBLES.map((c, i) => (
+                <motion.g
+                  key={`inner-${i}`}
+                  style={{
+                    transformOrigin: `${c.cx}px ${c.cy}px`,
+                    cursor: "pointer",
+                  }}
+                  whileHover={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          scale: 1.28,
+                          rotate: [0, 8, -8, 4, 0],
+                          transition: { type: "spring", stiffness: 450, damping: 14 },
+                        }
+                  }
+                  whileTap={{ scale: 0.92 }}
+                  onHoverStart={() => {
+                    setHoveredBubble(`inner-${i}`);
+                    playBubbleSound(c.freq);
+                  }}
+                  onHoverEnd={() => setHoveredBubble(null)}
+                  className="transition-opacity duration-200"
+                >
+                  <circle
+                    cx={c.cx}
+                    cy={c.cy}
+                    r={c.r}
+                    fill={c.fill}
+                    fillOpacity="0.95"
+                    className="transition-all duration-300 hover:filter hover:drop-shadow-[0_0_14px_rgba(255,255,255,0.85)]"
+                  />
+                  <circle
+                    cx={c.cx}
+                    cy={c.cy}
+                    r={c.r * 0.6}
+                    fill="none"
+                    stroke="#FFFFFF"
+                    strokeWidth="2.2"
+                    strokeOpacity="0.8"
+                  />
+                  <circle
+                    cx={c.cx}
+                    cy={c.cy}
+                    r={c.r * 0.25}
+                    fill="#FFFFFF"
+                    fillOpacity="0.85"
+                  />
+                </motion.g>
+              ))}
+
+              {/* ── Accent Micro-Bubbles with Quick Pop Jiggle ───── */}
+              {ACCENT_BUBBLES.map((c, i) => (
+                <motion.g
+                  key={`accent-${i}`}
+                  style={{
+                    transformOrigin: `${c.cx}px ${c.cy}px`,
+                    cursor: "pointer",
+                  }}
+                  whileHover={
+                    shouldReduceMotion
+                      ? undefined
+                      : {
+                          scale: 1.35,
+                          rotate: [0, -10, 10, 0],
+                          transition: { type: "spring", stiffness: 500, damping: 12 },
+                        }
+                  }
+                  onHoverStart={() => {
+                    setHoveredBubble(`accent-${i}`);
+                    playBubbleSound(c.freq);
+                  }}
+                  onHoverEnd={() => setHoveredBubble(null)}
+                >
                   <circle
                     cx={c.cx}
                     cy={c.cy}
@@ -268,20 +397,11 @@ export default function WatercolorCanvas() {
                   <circle
                     cx={c.cx}
                     cy={c.cy}
-                    r={c.r * 0.6}
-                    fill="none"
-                    stroke="#FFFFFF"
-                    strokeWidth="2"
-                    strokeOpacity="0.75"
-                  />
-                  <circle
-                    cx={c.cx}
-                    cy={c.cy}
-                    r={c.r * 0.25}
+                    r={c.r * 0.4}
                     fill="#FFFFFF"
-                    fillOpacity="0.8"
+                    fillOpacity="0.75"
                   />
-                </g>
+                </motion.g>
               ))}
             </svg>
 
@@ -391,8 +511,6 @@ export default function WatercolorCanvas() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: tag.delay, duration: 0.6 }}
               whileHover={{ scale: 1.08, y: -4 }}
-              onHoverStart={() => setActiveChip(tag.id)}
-              onHoverEnd={() => setActiveChip(null)}
               style={{
                 left: `calc(50% + ${tag.x})`,
                 top: `calc(50% + ${tag.y})`,
@@ -412,9 +530,9 @@ export default function WatercolorCanvas() {
         })}
       </div>
 
-      {/* Bottom pill caption */}
+      {/* Bottom hint pill */}
       <div className="relative z-20 mt-2 text-center text-xs font-medium text-muted-foreground/80">
-        <span>✨ Move your cursor over the glass to feel the watercolor droplets & rainbow swirls</span>
+        <span>✨ Hover over the color bubbles to feel them pop & jiggle</span>
       </div>
     </div>
   );
