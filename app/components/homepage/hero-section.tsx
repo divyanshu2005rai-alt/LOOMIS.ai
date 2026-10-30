@@ -24,8 +24,6 @@ interface LoaderData {
 }
 
 export default function HeroSection({ loaderData }: { loaderData: LoaderData }) {
-  const liveStats = useQuery(api.stats.getHeroStats);
-  const stats = liveStats || loaderData?.initialStats;
   const shouldReduceMotion = useReducedMotion();
 
   const ctaLink = loaderData?.isSignedIn ? "/dashboard" : "/sign-up";
@@ -139,41 +137,6 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
             </a>
           </Button>
         </motion.div>
-
-        {/* Live Creator Stats */}
-        {stats && (
-          <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.4 }}
-            className="mx-auto mt-10 max-w-lg grid grid-cols-3 gap-4 border-y border-[#E7E5E4]/80 py-4 dark:border-[#27272A]/80"
-          >
-            <div>
-              <div className="font-serif text-2xl font-normal text-[#1C1917] sm:text-3xl dark:text-[#F5F5F7]">
-                {stats.videosProcessed.toLocaleString()}
-              </div>
-              <div className="mt-0.5 text-xs text-[#78716C] dark:text-[#A1A1AA]">
-                Videos packaged
-              </div>
-            </div>
-            <div>
-              <div className="font-serif text-2xl font-normal text-[#1C1917] sm:text-3xl dark:text-[#F5F5F7]">
-                {stats.agentsDeployed.toLocaleString()}
-              </div>
-              <div className="mt-0.5 text-xs text-[#78716C] dark:text-[#A1A1AA]">
-                Agents active
-              </div>
-            </div>
-            <div>
-              <div className="font-serif text-2xl font-normal text-[#1C1917] sm:text-3xl dark:text-[#F5F5F7]">
-                {stats.projectsCreated.toLocaleString()}
-              </div>
-              <div className="mt-0.5 text-xs text-[#78716C] dark:text-[#A1A1AA]">
-                Stories told
-              </div>
-            </div>
-          </motion.div>
-        )}
 
         {/* ── CENTERPIECE ARTWORK: Directly Below in the Center ─── */}
         <motion.div

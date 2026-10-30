@@ -67,18 +67,11 @@ export const Navbar = ({
                 <Link
                   to="/"
                   aria-label="home"
-                  className="flex items-center space-x-2 font-semibold text-xl"
+                  className="font-serif flex items-center space-x-2 font-normal text-xl text-[#1C1917] dark:text-[#F5F5F7]"
                   prefetch="viewport"
                 >
-                  Loomis
+                  <span className="bg-gradient-to-r from-[#FA7268] via-[#F59E0B] to-[#845EC2] bg-clip-text text-transparent font-medium">YouPac</span> AI
                 </Link>
-                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-full">
-                  <span className="relative flex h-2 w-2 items-center justify-center">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75"></span>
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                  </span>
-                  <p className="text-xs text-muted-foreground">Live Stats</p>
-                </div>
               </div>
 
               <button
