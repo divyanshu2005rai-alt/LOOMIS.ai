@@ -54,7 +54,7 @@ export async function loader(args: Route.LoaderArgs) {
   const { userId } = await getAuth(args);
   
   // Fetch initial stats from Convex
-  const convexUrl = process.env.VITE_CONVEX_URL || process.env.CONVEX_URL || "https://chatty-octopus-118.convex.cloud";
+  const convexUrl = process.env.VITE_CONVEX_URL || process.env.CONVEX_URL || (import.meta as any).env?.VITE_CONVEX_URL;
   const convex = new ConvexHttpClient(convexUrl);
   
   let initialStats = null;
