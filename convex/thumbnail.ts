@@ -1,7 +1,13 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import OpenAI, { toFile } from "openai";
+import {
+  cfVisionChat,
+  cfTextToImage,
+  requireEnv,
+  stripDataUrlPrefix,
+  MAX_GROQ_IMAGES,
+} from "./aiProviders";
 
 export const generateThumbnail = action({
   args: {
@@ -67,14 +73,10 @@ export const generateThumbnail = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    // Get OpenAI API key from Convex environment
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      console.error("[Thumbnail] OpenAI API key not configured");
-      throw new Error("Thumbnail generation service is not configured. Please contact support.");
-    }
-
-    const openai = new OpenAI({ apiKey });
+    // Provider credentials (all stored in Convex env vars)
+    const groqKey = requireEnv("GROQ_API_KEY");
+    const cfAccountId = requireEnv("CF_ACCOUNT_ID");
+    const cfApiToken = requireEnv("CF_API_TOKEN");
 
     try {
       // If we have a videoId, fetch the latest video data with transcription
@@ -210,80 +212,43 @@ export const generateThumbnail = action({
       console.log("[Thumbnail] Prompt created, length:", thumbnailPrompt.length);
       console.log("[Thumbnail] Mood board images included:", moodBoardImages.length);
       
-      // First, analyze the uploaded images with GPT-4 Vision
-      console.log("[Thumbnail] Analyzing uploaded images with GPT-4 Vision...");
-      console.log("[Thumbnail] Number of input images:", args.videoFrames.length);
-      
-      const analysisMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        {
-          role: "system",
-          content: "You are an expert YouTube thumbnail designer. Analyze the provided images and create a detailed thumbnail concept that will maximize click-through rates.",
-        },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: thumbnailPrompt + "\n\nAnalyze these images and describe the perfect YouTube thumbnail based on them. Be specific about visual elements, colors, composition, and text overlay suggestions." },
-            ...args.videoFrames.map((frame) => ({
-              type: "image_url" as const,
-              image_url: {
-                url: frame.dataUrl,
-                detail: "high" as const,
-              },
-            })),
-            // Include mood board images if available
-            ...moodBoardImages.map((mbImage) => ({
-              type: "image_url" as const,
-              image_url: {
-                url: mbImage.imageUrl,
-                detail: "low" as const, // Lower detail for mood board references
-              },
-            })),
-          ],
-        },
-      ];
-      
-      const analysisResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: analysisMessages,
-        max_tokens: 800,
-        temperature: 0.7,
-      });
-      
-      const thumbnailConcept = analysisResponse.choices[0].message.content || "";
-      console.log("[Thumbnail] Analysis complete. Concept:", thumbnailConcept.substring(0, 200) + "...");
-      
-      // Now ask GPT-4 to create a very detailed description of what it sees in the images
-      console.log("[Thumbnail] Getting detailed visual description...");
-      
-      const descriptionMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        {
-          role: "system",
-          content: "You are a visual description expert. Describe EXACTLY what you see in these images in extreme detail, including: people's appearance, facial expressions, clothing, poses, backgrounds, objects, colors, lighting, and composition. Be as specific as possible.",
-        },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: "Describe these images in extreme detail. I need to recreate them as a YouTube thumbnail." },
-            ...args.videoFrames.map((frame) => ({
-              type: "image_url" as const,
-              image_url: {
-                url: frame.dataUrl,
-                detail: "high" as const,
-              },
-            })),
-          ],
-        },
-      ];
-      
-      const descriptionResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: descriptionMessages,
-        max_tokens: 1000,
-        temperature: 0.3, // Lower temperature for accurate descriptions
-      });
-      
-      const visualDescription = descriptionResponse.choices[0].message.content || "";
-      console.log("[Thumbnail] Visual description obtained");
+      // ── Vision analysis with Cloudflare Workers AI ──────────
+      console.log("[Thumbnail] Analyzing uploaded image with Cloudflare Llama 3.2 vision...");
+      if (!args.videoFrames || args.videoFrames.length === 0) {
+        throw new Error("No frames available for thumbnail generation");
+      }
+      const firstFrame = args.videoFrames[0];
+      const sourceBase64 = stripDataUrlPrefix(firstFrame.dataUrl);
+
+      let thumbnailConcept = "";
+      try {
+        thumbnailConcept = await cfVisionChat(
+          cfAccountId,
+          cfApiToken,
+          thumbnailPrompt + "\n\nAnalyze this image and describe the perfect YouTube thumbnail based on it. Be specific about visual elements, colors, composition, and suggested text overlay (3-5 words).",
+          sourceBase64,
+          { maxTokens: 600 }
+        );
+        console.log("[Thumbnail] Analysis complete. Concept:", thumbnailConcept.substring(0, 200) + "...");
+      } catch (err: any) {
+        console.warn("[Thumbnail] Vision concept error, using fallback concept:", err.message);
+        thumbnailConcept = `High-CTR YouTube thumbnail for "${videoData.title || "video"}" with high contrast, vibrant colors, clear focal point, and compelling visual elements.`;
+      }
+
+      let visualDescription = "";
+      try {
+        visualDescription = await cfVisionChat(
+          cfAccountId,
+          cfApiToken,
+          "Describe what you see in this image in detail: subjects, expressions, background, objects, colors, and lighting.",
+          sourceBase64,
+          { maxTokens: 400 }
+        );
+        console.log("[Thumbnail] Visual description obtained");
+      } catch (err: any) {
+        console.warn("[Thumbnail] Visual description error, using fallback:", err.message);
+        visualDescription = "A clear scene from the video with focal subject and vivid background.";
+      }
       
       // Extract key elements from the concept - better regex for text overlay
       const textOverlayMatch = thumbnailConcept.match(/text[:\s]*["']([^"']+)["']/i) ||
@@ -294,8 +259,8 @@ export const generateThumbnail = action({
       
       console.log("[Thumbnail] Extracted text overlay:", textOverlay);
       
-      // Build a comprehensive prompt for gpt-image-1 that includes video context
-      let gptImagePrompt = "Create a YouTube thumbnail based on this video content:\n\n";
+      // Build a comprehensive prompt for SDXL that includes video context
+      let sdxlPrompt = "Create a YouTube thumbnail based on this video content:\n\n";
       
       // Debug: Log connected agent outputs
       console.log("[Thumbnail] Connected agent outputs:", args.connectedAgentOutputs);
@@ -304,180 +269,106 @@ export const generateThumbnail = action({
       const titleFromAgent = args.connectedAgentOutputs.find(output => output.type === "title");
       if (titleFromAgent && titleFromAgent.content && titleFromAgent.content.trim() !== "") {
         console.log("[Thumbnail] Using AI-generated title:", titleFromAgent.content);
-        gptImagePrompt += `VIDEO TITLE: ${titleFromAgent.content}\n\n`;
+        sdxlPrompt += `VIDEO TITLE: ${titleFromAgent.content}\n\n`;
       } else {
         console.log("[Thumbnail] No AI title found in connected agents");
-        // Don't include filename as it's not useful for thumbnail generation
       }
       
       // Add transcription summary if available
       if (videoData.transcription) {
         const transcriptSummary = videoData.transcription.slice(0, 300);
-        gptImagePrompt += `VIDEO CONTENT: ${transcriptSummary}...\n\n`;
+        sdxlPrompt += `VIDEO CONTENT: ${transcriptSummary}...\n\n`;
       }
       
       // Add visual description from the uploaded frames
       const shortDescription = visualDescription.length > 400 ? 
         visualDescription.substring(0, 400) + "..." : 
         visualDescription;
-      gptImagePrompt += `VISUAL ELEMENTS: ${shortDescription}\n\n`;
+      sdxlPrompt += `VISUAL ELEMENTS: ${shortDescription}\n\n`;
       
       // Add design requirements with the extracted text overlay
-      gptImagePrompt += "DESIGN REQUIREMENTS:\n";
-      gptImagePrompt += `- Main text overlay should say: "${textOverlay}"\n`;
-      gptImagePrompt += "- Make the text LARGE and BOLD\n";
-      gptImagePrompt += "- Use eye-catching YouTube thumbnail style\n";
-      gptImagePrompt += "- High contrast and vibrant colors\n";
-      gptImagePrompt += "- Professional quality\n";
-      gptImagePrompt += "- 16:9 aspect ratio\n";
+      sdxlPrompt += "DESIGN REQUIREMENTS:\n";
+      sdxlPrompt += `- Main text overlay should say: "${textOverlay}"\n`;
+      sdxlPrompt += "- Make the text LARGE and BOLD\n";
+      sdxlPrompt += "- Use eye-catching YouTube thumbnail style\n";
+      sdxlPrompt += "- High contrast and vibrant colors\n";
+      sdxlPrompt += "- Professional quality\n";
+      sdxlPrompt += "- 16:9 aspect ratio\n";
       
-      // Add channel style if available - ensure it's not cut off
+      // Add channel style if available
       if (args.profileData) {
         const channelInfo = `${args.profileData.channelName} - ${args.profileData.niche}`;
-        gptImagePrompt += `\nCHANNEL STYLE: ${channelInfo}\n`;
+        sdxlPrompt += `\nCHANNEL STYLE: ${channelInfo}\n`;
         if (args.profileData.contentType) {
-          gptImagePrompt += `Content type: ${args.profileData.contentType}\n`;
+          sdxlPrompt += `Content type: ${args.profileData.contentType}\n`;
         }
         if (args.profileData.tone) {
-          gptImagePrompt += `Tone: ${args.profileData.tone}\n`;
+          sdxlPrompt += `Tone: ${args.profileData.tone}\n`;
         }
         if (args.profileData.targetAudience) {
-          gptImagePrompt += `Target audience: ${args.profileData.targetAudience}\n`;
+          sdxlPrompt += `Target audience: ${args.profileData.targetAudience}\n`;
         }
       }
       
       // Add mood board references to the generation prompt
       if (moodBoardImages.length > 0) {
-        gptImagePrompt += "\nMOOD BOARD VISUAL REFERENCES:\n";
-        gptImagePrompt += `${moodBoardImages.length} visual references have been included for style inspiration.\n`;
-        gptImagePrompt += "Study their composition, color schemes, and overall aesthetic to create a cohesive thumbnail.\n";
+        sdxlPrompt += "\nMOOD BOARD VISUAL REFERENCES:\n";
+        sdxlPrompt += `${moodBoardImages.length} visual references have been included for style inspiration.\n`;
+        sdxlPrompt += "Study their composition, color schemes, and overall aesthetic to create a cohesive thumbnail.\n";
       }
       
       // Add any specific context from the user
       if (args.additionalContext) {
-        gptImagePrompt += `\nSPECIFIC REQUIREMENTS: ${args.additionalContext}\n`;
+        sdxlPrompt += `\nSPECIFIC REQUIREMENTS: ${args.additionalContext}\n`;
       }
       
       // Add other connected agent outputs (descriptions, etc)
       const otherAgentOutputs = args.connectedAgentOutputs
         .filter(output => output.type !== "title" && output.type !== "thumbnail");
       if (otherAgentOutputs.length > 0) {
-        gptImagePrompt += "\nOTHER CONTEXT:\n";
+        sdxlPrompt += "\nOTHER CONTEXT:\n";
         otherAgentOutputs.forEach(output => {
           if (output.type === "description" && output.content) {
-            gptImagePrompt += `- Video Description: ${output.content.slice(0, 200)}...\n`;
+            sdxlPrompt += `- Video Description: ${output.content.slice(0, 200)}...\n`;
           }
         });
       }
       
       // Ensure prompt doesn't exceed limit
-      if (gptImagePrompt.length > 1000) {
-        gptImagePrompt = gptImagePrompt.substring(0, 1000) + "...";
+      if (sdxlPrompt.length > 1000) {
+        sdxlPrompt = sdxlPrompt.substring(0, 1000) + "...";
       }
       
-      console.log("[Thumbnail] Generating thumbnail with gpt-image-1...");
-      console.log("[Thumbnail] Prompt:", gptImagePrompt.substring(0, 200) + "...");
+      console.log("[Thumbnail] Generating thumbnail with Cloudflare Workers AI SDXL...");
+      console.log("[Thumbnail] Prompt:", sdxlPrompt.substring(0, 200) + "...");
       
-      // Convert the first frame to use with image editing
-      const firstFrame = args.videoFrames[0];
-      if (!firstFrame) {
-        throw new Error("No frames available for thumbnail generation");
-      }
-
-      // Process all frames as reference images
-      const imageFiles = await Promise.all(
-        args.videoFrames.slice(0, 3).map(async (frame, index) => {
-          const base64Data = frame.dataUrl.split(',')[1];
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          const imageBlob = new Blob([bytes], { type: 'image/png' });
-          return toFile(imageBlob, `frame-${index}.png`, {
-            type: 'image/png',
-          });
-        })
-      );
-
-      // Use images.edit with the first image as base
-      console.log("[Thumbnail] Using images.edit API...");
-      const imageResponse = await openai.images.edit({
-        model: "gpt-image-1",
-        image: imageFiles[0],
-        prompt: gptImagePrompt,
-        size: "1536x1024",
+      const imageBlob = await cfTextToImage(cfAccountId, cfApiToken, sdxlPrompt, {
+        guidance: 7.5,
+        numSteps: 20,
       });
-      
-      
+
       console.log("[Thumbnail] Image generation completed");
-      
-      // Get the generated image - handle both URL and base64 formats
-      const imageData = imageResponse.data?.[0];
-      if (!imageData) {
-        throw new Error("No image data returned from generation");
+
+      // Store the PNG blob in Convex storage
+      console.log("[Thumbnail] Storing image in Convex storage...");
+      const storageId = await ctx.storage.store(imageBlob);
+      const generatedImageUrl = await ctx.storage.getUrl(storageId);
+
+      if (!generatedImageUrl) {
+        throw new Error("Failed to get URL for stored image");
       }
-      
-      let generatedImageUrl: string;
-      let storageId: string;
-      
-      if (imageData.b64_json) {
-        // Handle base64 response
-        console.log("[Thumbnail] Received base64 image data");
-        const base64Data = imageData.b64_json;
-        
-        // Convert base64 to blob
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const imageBlob = new Blob([bytes], { type: 'image/png' });
-        
-        // Store in Convex storage
-        console.log("[Thumbnail] Storing base64 image in Convex storage...");
-        storageId = await ctx.storage.store(imageBlob);
-        const url = await ctx.storage.getUrl(storageId);
-        
-        if (!url) {
-          throw new Error("Failed to get URL for stored image");
-        }
-        generatedImageUrl = url;
-        console.log("[Thumbnail] Image stored successfully");
-      } else if (imageData.url) {
-        // Handle URL response (fallback)
-        generatedImageUrl = imageData.url;
-        
-        // Download and store URL-based image
-        console.log("[Thumbnail] Downloading image from URL...");
-        const imageResponse2 = await fetch(generatedImageUrl);
-        if (!imageResponse2.ok) {
-          throw new Error("Failed to download generated image");
-        }
-        
-        const downloadedImageBlob = await imageResponse2.blob();
-        console.log("[Thumbnail] Storing URL image in Convex storage...");
-        storageId = await ctx.storage.store(downloadedImageBlob);
-        const permanentUrl = await ctx.storage.getUrl(storageId);
-        
-        if (!permanentUrl) {
-          throw new Error("Failed to get permanent URL for stored image");
-        }
-        generatedImageUrl = permanentUrl;
-      } else {
-        throw new Error("No image URL or base64 data in response");
-      }
-      
+
+      console.log("[Thumbnail] Image stored successfully");
       console.log("[Thumbnail] Final image URL:", generatedImageUrl.substring(0, 100) + "...");
       
       // Combine the concept with generation details
-      const fullConcept = `${thumbnailConcept}\n\n=== Generated Thumbnail ===\nText Overlay: "${textOverlay}"\nGeneration Prompt: ${gptImagePrompt}`;
+      const fullConcept = `${thumbnailConcept}\n\n=== Generated Thumbnail ===\nText Overlay: "${textOverlay}"\nGeneration Prompt: ${sdxlPrompt}`;
       
       // Return the result with permanent URL
       return {
         concept: fullConcept,
         imageUrl: generatedImageUrl,
-        prompt: `=== Original Requirements ===\n${thumbnailPrompt}\n\n=== AI Analysis ===\n${thumbnailConcept}\n\n=== Generation Prompt ===\n${gptImagePrompt}`,
+        prompt: `=== Original Requirements ===\n${thumbnailPrompt}\n\n=== AI Analysis ===\n${thumbnailConcept}\n\n=== Generation Prompt ===\n${sdxlPrompt}`,
         storageId,
       };
     } catch (error: any) {
@@ -486,13 +377,7 @@ export const generateThumbnail = action({
       console.error("[Thumbnail] Error message:", error.message);
       console.error("[Thumbnail] Error stack:", error.stack);
       
-      if (error.response) {
-        console.error("[Thumbnail] API response error:", error.response.data);
-      }
-      
       throw error;
     }
   },
 });
-
-

@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { groqGenerateText } from "./aiProviders";
 
 export const refineContent = action({
   args: {
@@ -56,12 +55,12 @@ export const refineContent = action({
     try {
       // Build the system prompt based on agent type
       const systemPrompt = getRefineSystemPrompt(args.agentType);
-      
+
       // Build the conversation context with proper types
       let prompt = systemPrompt + "\n\n";
       prompt += `CURRENT ${args.agentType.toUpperCase()} (that needs to be changed): "${args.currentDraft}"\n\n`;
       prompt += `Note: The user wants this regenerated/changed. Do NOT return the same content.\n\n`;
-      
+
       // Add chat history
       if (args.chatHistory.length > 0) {
         prompt += "Previous conversation:\n";
@@ -70,12 +69,12 @@ export const refineContent = action({
         });
         prompt += "\n";
       }
-      
+
       // Add context about the video if available
       if (args.videoData?.transcription) {
         prompt += `Video context: ${args.videoData.transcription.slice(0, 1000)}...\n\n`;
       }
-      
+
       // Add connected agent outputs if available
       if (args.connectedAgentOutputs && args.connectedAgentOutputs.length > 0) {
         prompt += "Related content from other agents:\n";
@@ -84,7 +83,7 @@ export const refineContent = action({
         });
         prompt += "\n";
       }
-      
+
       // Add profile data if available
       if (args.profileData) {
         prompt += "Channel Profile:\n";
@@ -98,13 +97,12 @@ export const refineContent = action({
         }
         prompt += "\n";
       }
-      
+
       // Add the current user message
       prompt += `User: ${args.userMessage}\n\nPlease provide your response following the format specified in the system prompt.`;
 
       // Generate refined content
-      const { text: response } = await generateText({
-        model: openai("gpt-4o-mini"),
+      const { text: response } = await groqGenerateText({
         system: systemPrompt,
         prompt,
         temperature: 0.7,
@@ -121,13 +119,13 @@ export const refineContent = action({
         role: "user",
         message: args.userMessage,
       });
-      
+
       await ctx.runMutation(api.agents.addChatMessage, {
         id: args.agentId,
         role: "ai",
         message: response,
       });
-      
+
       // Update the agent's draft if it changed
       if (updatedDraft !== args.currentDraft) {
         await ctx.runMutation(api.agents.updateDraft, {
@@ -172,21 +170,21 @@ Important guidelines:`;
 - Make them engaging and clickable
 - Include relevant keywords
 - Avoid clickbait but create curiosity`,
-    
+
     description: `
 - Include relevant keywords naturally
 - Structure with clear sections
 - Add timestamps if mentioned
 - Include calls-to-action
 - Optimize for SEO`,
-    
+
     thumbnail: `
 - Describe visual elements clearly
 - Suggest compelling text overlays
 - Recommend color schemes
 - Focus on eye-catching composition
 - Consider mobile visibility`,
-    
+
     tweets: `
 - Keep within Twitter/X character limits
 - Make each tweet valuable standalone
@@ -202,12 +200,12 @@ function extractUpdatedDraft(response: string, agentType: string, currentDraft: 
   // Look for the updated content section in the response
   const marker = `UPDATED ${agentType.toUpperCase()}:`;
   const markerIndex = response.indexOf(marker);
-  
+
   if (markerIndex !== -1) {
     const updatedContent = response.substring(markerIndex + marker.length).trim();
     return updatedContent;
   }
-  
+
   // If no explicit update marker, return the current draft
   return currentDraft;
 }

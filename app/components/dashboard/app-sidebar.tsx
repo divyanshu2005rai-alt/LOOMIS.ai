@@ -48,7 +48,7 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <Link to="/" prefetch="viewport">
-              <span className="text-base font-semibold">YouPac AI</span>
+              <span className="text-base font-semibold">Loomis</span>
             </Link>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { groqGenerateText } from "./aiProviders";
 
 // Simplified AI generation for hackathon - no database dependencies
 export const generateContentSimple = action({
@@ -110,8 +109,7 @@ export const generateContentSimple = action({
       const params = generationParams[args.agentType as keyof typeof generationParams] 
         || { temperature: 0.7, maxTokens: 300 };
 
-      const { text: generatedContent } = await generateText({
-        model: openai("gpt-4o"),  // Upgrade to better model for quality
+      const { text: generatedContent } = await groqGenerateText({
         system: getSystemPrompt(args.agentType),
         prompt,
         temperature: params.temperature,

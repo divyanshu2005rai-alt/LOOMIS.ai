@@ -50,14 +50,14 @@ export const transcribeInBackground = internalAction({
     console.log("📋 File name:", args.fileName);
     
     try {
-      console.log("🚀 Calling ElevenLabs transcription action...");
-      const result = await ctx.runAction(api.transcription.transcribeVideoElevenLabs, {
+      console.log("🚀 Calling Groq transcription action...");
+      const result = await ctx.runAction(api.transcription.transcribeVideoGroq, {
         videoId: args.videoId,
         storageId: args.storageId,
         fileType: args.fileType,
         fileName: args.fileName,
       });
-      console.log("✅ ElevenLabs transcription completed successfully:", result);
+      console.log("✅ Groq transcription completed successfully:", result);
       
       if (!result) {
         throw new Error("Transcription returned no result");

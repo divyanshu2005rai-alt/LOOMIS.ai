@@ -28,7 +28,7 @@ export default function FooterSection() {
         </div>
         <span className="text-muted-foreground block text-center text-sm">
           {" "}
-          © {new Date().getFullYear()} YouPac AI, All rights reserved
+          © {new Date().getFullYear()} Loomis, All rights reserved
         </span>
       </div>
     </footer>

@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { getGroqChatModel } from "./aiProviders";
 import { streamText } from "ai";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
@@ -8,7 +8,7 @@ export const chat = httpAction(async (ctx, req) => {
   const { messages } = await req.json();
 
   const result = streamText({
-    model: openai("gpt-4o"),
+    model: getGroqChatModel(),
     messages,
     async onFinish({ text }) {
       // implement your own logic here, e.g. for storing messages
@@ -97,10 +97,10 @@ http.route({
   path: "/api/transcribe",
   method: "POST",
   handler: httpAction(async (ctx, request) => {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "ElevenLabs API key not configured" }), {
+      return new Response(JSON.stringify({ error: "Groq API key not configured" }), {
         status: 500,
         headers: {
           "Content-Type": "application/json",
@@ -144,13 +144,28 @@ http.route({
         }
       }
       
-      // Forward the request to ElevenLabs
-      const response = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+      const supportedExts = ["flac", "mp3", "mp4", "mpeg", "mpga", "m4a", "ogg", "wav", "webm"];
+      const originalName = file?.name || "audio.wav";
+      const extMatch = originalName.match(/\.([a-zA-Z0-9]+)$/);
+      const ext = extMatch ? extMatch[1].toLowerCase() : "";
+      const safeName = supportedExts.includes(ext)
+        ? originalName
+        : `${originalName.replace(/\.[^.]+$/, "") || "audio"}.wav`;
+
+      const groqFormData = new FormData();
+      if (file) {
+        groqFormData.append("file", file, safeName);
+      }
+      groqFormData.append("model", "whisper-large-v3-turbo");
+      groqFormData.append("response_format", "json");
+
+      // The browser never receives the Groq API key.
+      const response = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
         method: "POST",
         headers: {
-          "Xi-Api-Key": apiKey,
+          Authorization: `Bearer ${apiKey}`,
         },
-        body: formData,
+        body: groqFormData,
       });
       
       // Get the response data
@@ -158,13 +173,31 @@ http.route({
       
       // Log response for debugging
       if (!response.ok) {
-        console.error("❌ ElevenLabs error:", {
+        console.error("❌ Groq transcription error:", {
           status: response.status,
           statusText: response.statusText,
           response: responseData,
         });
+
+        let parsedError = `Groq API error (${response.status})`;
+        try {
+          const errObj = JSON.parse(responseData);
+          if (errObj.error?.message) {
+            parsedError = errObj.error.message;
+          }
+        } catch (_) {}
+
+        return new Response(JSON.stringify({ error: parsedError }), {
+          status: response.status,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+          },
+        });
       } else {
-        console.log("✅ ElevenLabs transcription successful");
+        console.log("✅ Groq transcription successful");
         // Parse and check if it's the "no speech" response
         try {
           const result = JSON.parse(responseData);

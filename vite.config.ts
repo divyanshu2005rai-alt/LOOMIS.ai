@@ -9,6 +9,7 @@ export default defineConfig({
     noExternal: ["@xyflow/react", "@xyflow/system"],
   },
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
       "use-sync-external-store/shim/with-selector": "use-sync-external-store/shim/with-selector.js",
     },

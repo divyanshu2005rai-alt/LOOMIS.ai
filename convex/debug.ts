@@ -1,4 +1,20 @@
-import { query } from "./_generated/server";
+import { action, query } from "./_generated/server";
+
+export const listGroqModels = action({
+  handler: async () => {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return { error: "No GROQ_API_KEY in convex environment" };
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const data = await res.json();
+      return { status: res.status, models: data };
+    } catch (e: any) {
+      return { error: e.message };
+    }
+  },
+});
 
 export const getAllTranscriptions = query({
   handler: async (ctx) => {

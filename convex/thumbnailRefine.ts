@@ -1,7 +1,12 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import OpenAI, { toFile } from "openai";
+import {
+  cfVisionChat,
+  cfTextToImage,
+  requireEnv,
+  stripDataUrlPrefix,
+} from "./aiProviders";
 
 export const refineThumbnail = action({
   args: {
@@ -32,12 +37,9 @@ export const refineThumbnail = action({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error("OpenAI API key not configured");
-    }
-
-    const openai = new OpenAI({ apiKey });
+    const groqKey = requireEnv("GROQ_API_KEY");
+    const cfAccountId = requireEnv("CF_ACCOUNT_ID");
+    const cfApiToken = requireEnv("CF_API_TOKEN");
 
     try {
       // Get video data if available
@@ -51,44 +53,9 @@ export const refineThumbnail = action({
         }
       }
 
-      // First, analyze the current thumbnail with GPT-4 Vision
-      console.log("[Thumbnail Refine] Analyzing current thumbnail...");
-      
-      const analysisMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        {
-          role: "system",
-          content: "You are an expert YouTube thumbnail designer. Analyze the current thumbnail and understand what needs to be changed based on the user's feedback.",
-        },
-        {
-          role: "user",
-          content: [
-            { 
-              type: "text", 
-              text: `Current thumbnail analysis needed. User feedback: "${args.userMessage}"\n\nAnalyze this thumbnail and describe:\n1. What text overlay is currently shown\n2. The main visual elements\n3. The color scheme and style\n4. What specific changes are needed based on the user's feedback` 
-            },
-            {
-              type: "image_url" as const,
-              image_url: {
-                url: args.currentThumbnailUrl,
-                detail: "high" as const,
-              },
-            },
-          ],
-        },
-      ];
-      
-      const analysisResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: analysisMessages,
-        max_tokens: 500,
-      });
-      
-      const currentAnalysis = analysisResponse.choices[0].message.content || "";
-      console.log("[Thumbnail Refine] Current thumbnail analysis:", currentAnalysis);
-
-      // Download the current thumbnail to use as base
+      // Download the current thumbnail to use as source for img2img and vision
       console.log("[Thumbnail Refine] Downloading current thumbnail...");
-      let imageFile;
+      let sourceBase64: string | null = null;
       
       try {
         const imageResponse = await fetch(args.currentThumbnailUrl);
@@ -98,19 +65,34 @@ export const refineThumbnail = action({
         
         const imageBlob = await imageResponse.blob();
         console.log("[Thumbnail Refine] Image blob size:", imageBlob.size);
-        
-        // If image is too large, we might need to resize it
-        if (imageBlob.size > 4 * 1024 * 1024) { // 4MB limit
-          console.warn("[Thumbnail Refine] Image is large, may cause issues");
+
+        // Convert blob to base64
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuffer);
+        let binary = "";
+        for (let i = 0; i < uint8.length; i++) {
+          binary += String.fromCharCode(uint8[i]);
         }
-        
-        // Create file directly from blob
-        imageFile = await toFile(imageBlob, 'current-thumbnail.png', {
-          type: imageBlob.type || 'image/png',
-        });
+        sourceBase64 = btoa(binary);
       } catch (downloadError) {
         console.error("[Thumbnail Refine] Error downloading image:", downloadError);
-        throw new Error("Failed to process current thumbnail. Please try generating a new thumbnail instead.");
+      }
+
+      // ── Analyze current thumbnail with Cloudflare Workers AI vision ──
+      console.log("[Thumbnail Refine] Analyzing current thumbnail with Cloudflare Llama 3.2 vision...");
+      let currentAnalysis = "";
+      try {
+        currentAnalysis = await cfVisionChat(
+          cfAccountId,
+          cfApiToken,
+          `Analyze this thumbnail and user feedback: "${args.userMessage}". Describe: 1. Main visual elements 2. Colors and text 3. Specific improvements needed based on user request.`,
+          sourceBase64 || undefined,
+          { maxTokens: 500 }
+        );
+        console.log("[Thumbnail Refine] Current thumbnail analysis:", currentAnalysis);
+      } catch (err: any) {
+        console.warn("[Thumbnail Refine] Vision analysis fallback:", err.message);
+        currentAnalysis = `Requested thumbnail adjustments: ${args.userMessage}`;
       }
 
       // Build refinement prompt
@@ -133,82 +115,29 @@ export const refineThumbnail = action({
         refinementPrompt += `\nCHANNEL STYLE: ${args.profileData.channelName} - ${args.profileData.niche}\n`;
       }
 
+      // Ensure prompt doesn't exceed limit
+      if (refinementPrompt.length > 1000) {
+        refinementPrompt = refinementPrompt.substring(0, 1000) + "...";
+      }
+
       console.log("[Thumbnail Refine] Refinement prompt:", refinementPrompt.substring(0, 200) + "...");
 
-      // Use images.edit to refine the thumbnail
+      // ── Generate refined thumbnail with Cloudflare SDXL ─────
       console.log("[Thumbnail Refine] Generating refined thumbnail...");
-      let imageEditResponse;
-      
-      try {
-        imageEditResponse = await openai.images.edit({
-          model: "gpt-image-1",
-          image: imageFile,
-          prompt: refinementPrompt,
-          size: "1536x1024",
-        });
-      } catch (apiError: any) {
-        console.error("[Thumbnail Refine] OpenAI API error:", apiError);
-        console.log("[Thumbnail Refine] Falling back to generation instead of edit");
-        
-        // Fallback: Generate a new image based on the analysis and user feedback
-        const fallbackPrompt = `Create a YouTube thumbnail that incorporates these changes:\n\n${refinementPrompt}\n\nBased on analysis of previous thumbnail:\n${currentAnalysis}`;
-        
-        imageEditResponse = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: fallbackPrompt,
-          size: "1792x1024",
-          quality: "hd",
-          n: 1,
-          style: "vivid",
-        });
-      }
+      // Generate refined thumbnail via text-to-image with full visual context
+      const fullRefinePrompt = `Create a YouTube thumbnail that incorporates these changes: ${refinementPrompt}. Based on analysis: ${currentAnalysis}`;
+      const resultBlob = await cfTextToImage(cfAccountId, cfApiToken, fullRefinePrompt, {
+        guidance: 7.5,
+        numSteps: 20,
+      });
 
-      // Handle the response
-      const imageData = imageEditResponse.data?.[0];
-      if (!imageData) {
-        throw new Error("No image data returned from refinement");
-      }
+      // Store the generated PNG in Convex storage
+      console.log("[Thumbnail Refine] Storing refined image in Convex storage...");
+      const storageId = await ctx.storage.store(resultBlob);
+      const finalImageUrl = await ctx.storage.getUrl(storageId);
 
-      let finalImageUrl: string;
-      let storageId: string;
-
-      if (imageData.b64_json) {
-        // Handle base64 response
-        console.log("[Thumbnail Refine] Processing base64 image...");
-        const base64Data = imageData.b64_json;
-        
-        // Convert base64 to blob
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const refinedImageBlob = new Blob([bytes], { type: 'image/png' });
-        
-        // Store in Convex
-        storageId = await ctx.storage.store(refinedImageBlob);
-        const url = await ctx.storage.getUrl(storageId);
-        if (!url) {
-          throw new Error("Failed to get URL for stored refined image");
-        }
-        finalImageUrl = url;
-      } else if (imageData.url) {
-        // Handle URL response
-        console.log("[Thumbnail Refine] Downloading refined image from URL...");
-        const downloadResponse = await fetch(imageData.url);
-        if (!downloadResponse.ok) {
-          throw new Error("Failed to download refined image");
-        }
-        
-        const refinedBlob = await downloadResponse.blob();
-        storageId = await ctx.storage.store(refinedBlob);
-        const url = await ctx.storage.getUrl(storageId);
-        if (!url) {
-          throw new Error("Failed to get URL for stored refined image");
-        }
-        finalImageUrl = url;
-      } else {
-        throw new Error("No image URL or base64 data in refinement response");
+      if (!finalImageUrl) {
+        throw new Error("Failed to get URL for stored refined image");
       }
 
       console.log("[Thumbnail Refine] Refinement completed successfully");

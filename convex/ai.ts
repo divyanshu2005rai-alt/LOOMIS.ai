@@ -1,8 +1,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import { openai } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { groqGenerateText } from "./aiProviders";
 
 export const generateContent = action({
   args: {
@@ -55,8 +54,7 @@ export const generateContent = action({
         args.profileData
       );
 
-      const { text: generatedContent } = await generateText({
-        model: openai("gpt-4o-mini"),
+      const { text: generatedContent } = await groqGenerateText({
         system: getSystemPrompt(agent.type),
         prompt,
         temperature: 0.7,
@@ -162,8 +160,7 @@ export const refineContent = action({
         }
       }
 
-      const { text: refinedContent } = await generateText({
-        model: openai("gpt-4o-mini"),
+      const { text: refinedContent } = await groqGenerateText({
         system: getSystemPrompt(agent.type),
         messages: [
           {

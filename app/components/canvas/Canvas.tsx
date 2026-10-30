@@ -1554,7 +1554,7 @@ function InnerCanvas({
       setNodes((nds: any) => nds.concat(tempNode));
 
       // Validate file before upload
-      const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB limit for ElevenLabs
+      const MAX_FILE_SIZE = 1024 * 1024 * 1024;
       
       if (file.size > MAX_FILE_SIZE) {
         // Remove the temporary node since upload won't proceed
@@ -1797,20 +1797,18 @@ function InnerCanvas({
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       try {
-        // The backend will automatically use ElevenLabs if available (supports 1GB)
-        // Skip audio extraction entirely - let ElevenLabs handle large files directly
-        // Always use direct transcription with ElevenLabs
+        // The current upload-size policy is unchanged; Groq provider limits are handled separately.
         
         if (fileSizeMB > 1024) {
-          // File is over 1GB - ElevenLabs limit
+          // File is over the current upload limit.
           throw new Error(`File is too large for transcription (${fileSizeMB.toFixed(1)}MB). Maximum size is 1GB.`);
         }
         
         if (false) {
           // Dead code - audio extraction has been removed
-          // For large files, we'll extract audio (unless backend has ElevenLabs)
+          // For large files, audio extraction can be added later.
         } else {
-          // Client-side transcription with ElevenLabs
+          // Client-side transcription through the private Groq proxy.
           try {
             console.log("Starting client-side transcription for video:", video._id);
             
@@ -1826,11 +1824,11 @@ function InnerCanvas({
               description: `Processing ${file.name}...`,
             });
             
-            // Check if file needs compression
+            // Extract/compress audio if file is a video or larger than 10MB
             let fileToTranscribe = file;
-            if (isFileTooLarge(file, 20)) {
-              const fileSizeMB = getFileSizeMB(file);
-              toast.info(`Compressing ${fileSizeMB.toFixed(1)}MB file for transcription...`);
+            const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|wmv|m4v)$/i.test(file.name);
+            if (isVideo || isFileTooLarge(file, 10)) {
+              toast.info(`Extracting audio for transcription...`);
               
               try {
                 const compressedBlob = await compressAudioFile(file, {
@@ -1839,19 +1837,19 @@ function InnerCanvas({
                   mono: true // Mono is sufficient for transcription
                 });
                 
-                fileToTranscribe = new File([compressedBlob], file.name, { type: 'audio/wav' });
+                const wavName = (file.name || "audio").replace(/\.[^.]+$/, "") + ".wav";
+                fileToTranscribe = new File([compressedBlob], wavName, { type: 'audio/wav' });
                 const compressedSizeMB = getFileSizeMB(fileToTranscribe);
-                toast.success(`Compressed to ${compressedSizeMB.toFixed(1)}MB`);
+                toast.success(`Audio extracted (${compressedSizeMB.toFixed(1)}MB)`);
               } catch (compressionError) {
-                console.error("Audio compression failed:", compressionError);
-                toast.warning("Compression failed, attempting with original file...");
+                console.error("Audio extraction failed:", compressionError);
+                toast.warning("Audio extraction failed, attempting with original file...");
               }
             }
             
-            // Create FormData for ElevenLabs
+            // The server adds the Groq model and keeps the API key private.
             const formData = new FormData();
             formData.append("file", fileToTranscribe);
-            formData.append("model_id", "scribe_v1");
             
             // Get the Convex site URL - it should be in format https://xxxxx.convex.site
             const convexUrl = import.meta.env.VITE_CONVEX_URL;
@@ -1880,32 +1878,31 @@ function InnerCanvas({
             if (!transcriptionResponse.ok) {
               const errorText = await transcriptionResponse.text();
               console.error("Transcription API error:", errorText);
+
+              let detailedMessage = "";
+              try {
+                const errorData = JSON.parse(errorText);
+                detailedMessage = errorData.error?.message || errorData.error || errorData.message || "";
+              } catch (_) {
+                if (errorText && errorText.length < 200) detailedMessage = errorText;
+              }
               
               // Handle specific error cases
               if (transcriptionResponse.status === 429) {
-                // Rate limit error - parse the response for details
-                try {
-                  const errorData = JSON.parse(errorText);
-                  if (errorData.detail?.message) {
-                    throw new Error(`Transcription service is busy: ${errorData.detail.message}. Please try again in a few minutes or upload a manual transcription.`);
-                  }
-                } catch (e) {
-                  // Fallback if JSON parsing fails
-                }
                 throw new Error("Transcription service is experiencing high demand. Please try again in a few minutes or upload a manual transcription.");
+              } else if (transcriptionResponse.status === 413) {
+                throw new Error("File is too large for transcription. Maximum allowed size is 25MB.");
               } else if (transcriptionResponse.status === 503) {
                 throw new Error("Transcription service is temporarily unavailable. Please try again later or upload a manual transcription.");
-              } else if (transcriptionResponse.status === 500) {
-                throw new Error("Transcription service error. Please try again or upload a manual transcription.");
               } else {
-                throw new Error(`Transcription failed (${transcriptionResponse.status}). Please try again or upload a manual transcription.`);
+                throw new Error(detailedMessage ? `Transcription failed: ${detailedMessage}` : `Transcription failed (${transcriptionResponse.status}). Please try again or upload a manual transcription.`);
               }
             }
             
             const transcriptionResult = await transcriptionResponse.json();
             console.log("Transcription result:", transcriptionResult);
             
-            // Check if ElevenLabs couldn't detect speech
+            // Check if the transcription provider could not detect speech.
             if (transcriptionResult.text === "We couldn't transcribe the audio. The video might be silent or in an unsupported language.") {
               throw new Error("No speech detected. The video might be silent, have no audio track, or use an unsupported language.");
             }
@@ -2175,11 +2172,11 @@ function InnerCanvas({
           const blob = await response.blob();
           const file = new File([blob], video?.title || "video.mp4", { type: blob.type });
           
-          // Check if file needs compression
+          // Extract/compress audio if file is a video or larger than 10MB
           let fileToTranscribe = file;
-          if (isFileTooLarge(file, 20)) {
-            const fileSizeMB = getFileSizeMB(file);
-            toast.info(`Compressing ${fileSizeMB.toFixed(1)}MB file for transcription...`);
+          const isVideo = file.type.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|wmv|m4v)$/i.test(file.name);
+          if (isVideo || isFileTooLarge(file, 10)) {
+            toast.info(`Extracting audio for transcription...`);
             
             try {
               const compressedBlob = await compressAudioFile(file, {
@@ -2188,19 +2185,19 @@ function InnerCanvas({
                 mono: true // Mono is sufficient for transcription
               });
               
-              fileToTranscribe = new File([compressedBlob], file.name, { type: 'audio/wav' });
+              const wavName = (file.name || "audio").replace(/\.[^.]+$/, "") + ".wav";
+              fileToTranscribe = new File([compressedBlob], wavName, { type: 'audio/wav' });
               const compressedSizeMB = getFileSizeMB(fileToTranscribe);
-              toast.success(`Compressed to ${compressedSizeMB.toFixed(1)}MB`);
+              toast.success(`Audio extracted (${compressedSizeMB.toFixed(1)}MB)`);
             } catch (compressionError) {
-              console.error("Audio compression failed:", compressionError);
-              toast.warning("Compression failed, attempting with original file...");
+              console.error("Audio extraction failed:", compressionError);
+              toast.warning("Audio extraction failed, attempting with original file...");
             }
           }
           
-          // Create FormData for ElevenLabs
+          // The server adds the Groq model and keeps the API key private.
           const formData = new FormData();
           formData.append("file", fileToTranscribe);
-          formData.append("model_id", "scribe_v1");
           
           // Get the Convex site URL - it should be in format https://xxxxx.convex.site
           const convexUrl = import.meta.env.VITE_CONVEX_URL;
@@ -2227,31 +2224,30 @@ function InnerCanvas({
           if (!transcriptionResponse.ok) {
             const errorText = await transcriptionResponse.text();
             console.error("Retry transcription API error:", errorText);
+
+            let detailedMessage = "";
+            try {
+              const errorData = JSON.parse(errorText);
+              detailedMessage = errorData.error?.message || errorData.error || errorData.message || "";
+            } catch (_) {
+              if (errorText && errorText.length < 200) detailedMessage = errorText;
+            }
             
-            // Handle specific error cases (same as initial transcription)
+            // Handle specific error cases
             if (transcriptionResponse.status === 429) {
-              // Rate limit error - parse the response for details
-              try {
-                const errorData = JSON.parse(errorText);
-                if (errorData.detail?.message) {
-                  throw new Error(`Transcription service is busy: ${errorData.detail.message}. Please try again in a few minutes or upload a manual transcription.`);
-                }
-              } catch (e) {
-                // Fallback if JSON parsing fails
-              }
               throw new Error("Transcription service is experiencing high demand. Please try again in a few minutes or upload a manual transcription.");
+            } else if (transcriptionResponse.status === 413) {
+              throw new Error("File is too large for transcription. Maximum allowed size is 25MB.");
             } else if (transcriptionResponse.status === 503) {
               throw new Error("Transcription service is temporarily unavailable. Please try again later or upload a manual transcription.");
-            } else if (transcriptionResponse.status === 500) {
-              throw new Error("Transcription service error. Please try again or upload a manual transcription.");
             } else {
-              throw new Error(`Transcription failed (${transcriptionResponse.status}). Please try again or upload a manual transcription.`);
+              throw new Error(detailedMessage ? `Transcription failed: ${detailedMessage}` : `Transcription failed (${transcriptionResponse.status}). Please try again or upload a manual transcription.`);
             }
           }
           
           const transcriptionResult = await transcriptionResponse.json();
           
-          // Check if ElevenLabs couldn't detect speech
+          // Check if the transcription provider could not detect speech.
           if (transcriptionResult.text === "We couldn't transcribe the audio. The video might be silent or in an unsupported language.") {
             throw new Error("No speech detected. The video might be silent, have no audio track, or use an unsupported language.");
           }

@@ -1,4 +1,4 @@
-# YouPac AI - YouTube Content Creation Assistant
+# Loomis - YouTube Content Creation Assistant
 
 An AI-powered platform that helps YouTube creators generate compelling titles, descriptions, thumbnails, and social media posts from their video content. Built with React Router v7, Convex, and OpenAI.
 
@@ -41,7 +41,7 @@ An AI-powered platform that helps YouTube creators generate compelling titles, d
 - **Convex** - Real-time database and serverless functions
 - **Clerk** - Authentication and user management
 - **OpenAI** - GPT-4 for content generation, DALL-E 3 for thumbnails
-- **ElevenLabs** - Advanced speech-to-text transcription
+- **Groq Whisper** - Speech-to-text transcription
 - **FFmpeg** - Video processing and audio extraction
 
 ### Development & Deployment
@@ -57,7 +57,7 @@ An AI-powered platform that helps YouTube creators generate compelling titles, d
 - Clerk account for authentication
 - Convex account for database
 - OpenAI API key for content generation
-- ElevenLabs API key for transcription
+- Groq API key for transcription
 
 ### Installation
 
@@ -87,8 +87,8 @@ CLERK_SECRET_KEY=your_clerk_secret_key_here
 # OpenAI Configuration
 OPENAI_API_KEY=your_openai_api_key_here
 
-# ElevenLabs Configuration
-ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+# Groq Configuration
+GROQ_API_KEY=your_groq_api_key_here
 
 # Frontend URL
 FRONTEND_URL=http://localhost:5173
@@ -102,7 +102,7 @@ npx convex dev
 
 5. Set up environment variables in Convex dashboard:
    - `OPENAI_API_KEY`
-   - `ELEVENLABS_API_KEY`
+   - `GROQ_API_KEY`
 
 ### Development
 
@@ -172,7 +172,7 @@ Make sure to deploy the output of `npm run build`
 
 ### 1. Upload Video
 - Upload any video file (up to 1GB)
-- Automatic transcription using ElevenLabs
+- Automatic transcription using Groq Whisper
 - Extract video metadata (duration, resolution, etc.)
 
 ### 2. Generate Content
@@ -233,7 +233,7 @@ Make sure to deploy the output of `npm run build`
 
 #### Convex Environment Variables (set in Convex dashboard)
 - `OPENAI_API_KEY` - OpenAI API key for GPT-4 and DALL-E 3
-- `ELEVENLABS_API_KEY` - ElevenLabs API key for transcription
+- `GROQ_API_KEY` - Groq API key for Whisper transcription
 
 ## Project Structure
 
@@ -318,6 +318,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Transform your YouTube content creation workflow with AI.** YouPac AI helps creators save hours by automatically generating optimized titles, descriptions, thumbnails, and social media posts from their video content.
+**Transform your YouTube content creation workflow with AI.** Loomis helps creators save hours by automatically generating optimized titles, descriptions, thumbnails, and social media posts from their video content.
 
-Built with ❤️ using React Router v7, Convex, OpenAI, and ElevenLabs.
+Built with ❤️ using React Router v7, Convex, OpenAI, and Groq.

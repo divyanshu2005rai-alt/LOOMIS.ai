@@ -70,7 +70,7 @@ export const Navbar = ({
                   className="flex items-center space-x-2 font-semibold text-xl"
                   prefetch="viewport"
                 >
-                  YouPac AI
+                  Loomis
                 </Link>
                 <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-muted/50 rounded-full">
                   <span className="relative flex h-2 w-2 items-center justify-center">

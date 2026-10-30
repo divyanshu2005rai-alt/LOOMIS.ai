@@ -1,7 +1,11 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api } from "./_generated/api";
-import OpenAI, { toFile } from "openai";
+import {
+  cfTextToImage,
+  requireEnv,
+  stripDataUrlPrefix,
+} from "./aiProviders";
 
 export const generateThumbnailWithGPTImage = action({
   args: {
@@ -41,17 +45,13 @@ export const generateThumbnailWithGPTImage = action({
     additionalContext: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ concept: string; imageUrl: string; prompt?: string; storageId?: string }> => {
-    console.log("[GPT-Image Thumbnail] Starting thumbnail generation process");
+    console.log("[SDXL Thumbnail] Starting thumbnail generation process");
     
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error("OpenAI API key not configured");
-    }
-
-    const openai = new OpenAI({ apiKey });
+    const cfAccountId = requireEnv("CF_ACCOUNT_ID");
+    const cfApiToken = requireEnv("CF_API_TOKEN");
 
     try {
       // Get fresh video data if videoId is provided
@@ -104,84 +104,28 @@ export const generateThumbnailWithGPTImage = action({
         prompt = prompt.substring(0, 1000);
       }
       
-      console.log("[GPT-Image Thumbnail] Generated prompt:", prompt);
+      console.log("[SDXL Thumbnail] Generated prompt:", prompt);
       
-      // Process all frames into files
-      const imageFiles = await Promise.all(
-        args.videoFrames.slice(0, 4).map(async (frame, index) => {
-          const base64Data = frame.dataUrl.split(',')[1];
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-          }
-          const imageBlob = new Blob([bytes], { type: 'image/png' });
-          return toFile(imageBlob, `frame-${index}.png`, {
-            type: 'image/png',
-          });
-        })
-      );
-      
-      console.log(`[GPT-Image Thumbnail] Processing ${imageFiles.length} images`);
-      
-      // Use the first image as the base for editing
-      const response = await openai.images.edit({
-        model: "gpt-image-1",
-        image: imageFiles[0],
-        prompt,
-        size: "1024x1024",
+      console.log("[SDXL Thumbnail] Processing text-to-image with Cloudflare SDXL...");
+
+      const imageBlob = await cfTextToImage(cfAccountId, cfApiToken, prompt, {
+        guidance: 7.5,
+        numSteps: 20,
       });
 
-      console.log("[GPT-Image Thumbnail] Response received");
-      
-      // Get the generated image data
-      const imageData = response.data?.[0];
-      if (!imageData) {
-        throw new Error("No image data returned from generation");
-      }
-      
-      console.log("imageData:", imageData);
-      let permanentUrl: string;
-      let storageId: string;
-      
-      if (imageData.b64_json) {
-        // Handle base64 response
-        console.log("[GPT-Image Thumbnail] Processing base64 image...");
-        const base64Data = imageData.b64_json;
-        
-        // Convert base64 to blob
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const imageBlob = new Blob([bytes], { type: 'image/png' });
-        
-        // Store in Convex
-        storageId = await ctx.storage.store(imageBlob);
-        permanentUrl = await ctx.storage.getUrl(storageId) || "";
-      } else if (imageData.url) {
-        // Handle URL response
-        console.log("[GPT-Image Thumbnail] Downloading image from URL...");
-        const imageResponse = await fetch(imageData.url);
-        if (!imageResponse.ok) {
-          throw new Error("Failed to download generated image");
-        }
-        
-        const imageBlob = await imageResponse.blob();
-        storageId = await ctx.storage.store(imageBlob);
-        permanentUrl = await ctx.storage.getUrl(storageId) || "";
-      } else {
-        throw new Error("No image URL or base64 data in response");
-      }
-      
+      console.log("[SDXL Thumbnail] Image generated, storing in Convex...");
+
+      // Store the PNG blob in Convex storage
+      const storageId = await ctx.storage.store(imageBlob);
+      const permanentUrl = await ctx.storage.getUrl(storageId);
+
       if (!permanentUrl) {
         throw new Error("Failed to get permanent URL for stored image");
       }
       
-      console.log("[GPT-Image Thumbnail] Image stored successfully");
+      console.log("[SDXL Thumbnail] Image stored successfully");
       
-      const concept = `Generated YouTube thumbnail using gpt-image-1 model.\nText overlay: "${textOverlay || 'None'}"`;
+      const concept = `Generated YouTube thumbnail using Cloudflare Workers AI SDXL.\nText overlay: "${textOverlay || 'None'}"`;
       
       return {
         concept,
@@ -190,7 +134,7 @@ export const generateThumbnailWithGPTImage = action({
         storageId,
       };
     } catch (error: any) {
-      console.error("[GPT-Image Thumbnail] Error:", error);
+      console.error("[SDXL Thumbnail] Error:", error);
       throw error;
     }
   },
