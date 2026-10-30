@@ -1,6 +1,6 @@
 "use client";
 import { UserButton } from "@clerk/react-router";
-import { Github, Menu, X } from "lucide-react";
+import { Github, Menu, Sparkles, X } from "lucide-react";
 import React, { useCallback } from "react";
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
@@ -67,10 +67,20 @@ export const Navbar = ({
                 <Link
                   to="/"
                   aria-label="home"
-                  className="font-serif flex items-center space-x-2 font-normal text-xl text-[#1C1917] dark:text-[#F5F5F7]"
+                  className="group flex items-center gap-2.5 font-serif text-2xl font-normal transition-transform active:scale-95"
                   prefetch="viewport"
                 >
-                  <span className="bg-gradient-to-r from-[#FA7268] via-[#F59E0B] to-[#845EC2] bg-clip-text text-transparent font-medium">YouPac</span> AI
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#F59E0B] via-[#FBBF24] to-[#D97706] shadow-md shadow-[#F59E0B]/25 transition-transform duration-300 group-hover:scale-105">
+                    <Sparkles className="h-4 w-4 text-white drop-shadow-xs" />
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="bg-gradient-to-r from-[#D97706] via-[#F59E0B] to-[#FBBF24] dark:from-[#F59E0B] dark:via-[#FBBF24] dark:to-[#FCD34D] bg-clip-text text-transparent font-bold tracking-tight text-2xl">
+                      LOOMIS
+                    </span>
+                    <span className="font-sans text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#F59E0B]/15 text-[#D97706] dark:text-[#FBBF24] border border-[#F59E0B]/30 shadow-xs">
+                      .ai
+                    </span>
+                  </div>
                 </Link>
               </div>
 

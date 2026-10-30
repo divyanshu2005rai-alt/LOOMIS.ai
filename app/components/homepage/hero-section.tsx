@@ -53,10 +53,10 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
           initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 rounded-full border border-[#FA7268]/25 bg-[#FA7268]/10 px-4 py-1.5 text-xs font-medium text-[#FA7268] backdrop-blur-sm dark:border-[#FA7268]/30 dark:bg-[#FA7268]/15"
+          className="inline-flex items-center gap-2 rounded-full border border-[#F59E0B]/30 bg-[#F59E0B]/10 px-4 py-1.5 text-xs font-medium text-[#D97706] dark:text-[#FBBF24] backdrop-blur-sm"
         >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>AI Content Studio for YouTube Creators</span>
+          <Sparkles className="h-3.5 w-3.5 text-[#F59E0B]" />
+          <span><strong className="font-semibold text-[#B45309] dark:text-[#FCD34D]">LOOMIS.ai</strong> &mdash; Studio for YouTube Creators</span>
         </motion.div>
 
         {/* Centered Headline */}

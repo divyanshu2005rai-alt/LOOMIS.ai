@@ -7,9 +7,9 @@ import ContentSection from "~/components/homepage/content";
 import type { Route } from "./+types/home";
 
 export function meta({ }: Route.MetaArgs) {
-  const title = "YouTube AI Assistant - Streamline Your Video Content Creation";
+  const title = "LOOMIS.ai - Paint Your Video's Story";
   const description =
-    "AI-powered assistant for YouTube creators. Generate optimized titles, descriptions, thumbnails, and social media posts for your videos using advanced AI technology.";
+    "AI-powered creative studio for YouTube creators. Turn your videos into titles, thumbnails, descriptions and tweets that feel like you.";
   const keywords = "YouTube, AI Assistant, Content Creation, Video Optimization, AI Thumbnails, OpenAI, GPT-4, Video Transcription, Content Generator";
   const siteUrl = "https://youtube-ai-assistant.com/";
   const imageUrl =
@@ -29,8 +29,8 @@ export function meta({ }: Route.MetaArgs) {
     { property: "og:image", content: imageUrl },
     { property: "og:image:width", content: "1200" },
     { property: "og:image:height", content: "630" },
-    { property: "og:url", content: siteUrl },
-    { property: "og:site_name", content: "YouTube AI Assistant" },
+    { property: "og:url", siteUrl },
+    { property: "og:site_name", content: "LOOMIS.ai" },
     { property: "og:image", content: imageUrl },
 
     // Twitter Card
@@ -45,7 +45,7 @@ export function meta({ }: Route.MetaArgs) {
       name: "keywords",
       content: keywords,
     },
-    { name: "author", content: "YouTube AI Team" },
+    { name: "author", content: "LOOMIS.ai Team" },
     { name: "favicon", content: "/youtube-ai-logo.png" },
   ];
 }

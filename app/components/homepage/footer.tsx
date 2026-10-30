@@ -30,7 +30,11 @@ export default function FooterSection() {
           </Link>
         </div>
         <p className="text-xs text-[#78716C] dark:text-[#A1A1AA]">
-          © {new Date().getFullYear()} YouPac AI. Paint your video's story.
+          © {new Date().getFullYear()}{" "}
+          <span className="font-serif font-bold tracking-tight bg-gradient-to-r from-[#D97706] via-[#F59E0B] to-[#FBBF24] dark:from-[#F59E0B] dark:via-[#FBBF24] dark:to-[#FCD34D] bg-clip-text text-transparent">
+            LOOMIS.ai
+          </span>
+          . Paint your video's story.
         </p>
       </div>
     </footer>
