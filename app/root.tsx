@@ -42,26 +42,6 @@ export const links: Route.LinksFunction = () => [
     href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
   },
   
-  // Preload critical assets
-  {
-    rel: "preload",
-    href: "/ypai.png",
-    as: "image",
-    type: "image/png",
-  },
-  {
-    rel: "preload",
-    href: "/ypai.png", 
-    as: "image",
-    type: "image/png",
-  },
-  {
-    rel: "preload",
-    href: "https://dwdwn8b5ye.ufs.sh/f/MD2AM9SEY8Gu3B3mczu7JPAkBlwgiWGr6XbOSue4ZFzhR9QK",
-    as: "video",
-    type: "video/mp4",
-  },
-  
   // Icon
   {
     rel: "icon",
