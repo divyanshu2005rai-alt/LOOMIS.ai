@@ -15,8 +15,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response("Share ID not found", { status: 404 });
   }
 
-  // Hardcode the Convex URL for now
-  const convexUrl = "https://charming-bird-938.convex.cloud";
+  // Get the Convex URL from environment variables
+  const convexUrl = process.env.VITE_CONVEX_URL || process.env.CONVEX_URL || "https://chatty-octopus-118.convex.cloud";
   
   const convex = new ConvexHttpClient(convexUrl);
   
