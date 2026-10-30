@@ -9,9 +9,7 @@ export default function FooterSection() {
       <div className="mx-auto max-w-5xl px-6 text-center">
         <div className="mb-4 flex flex-wrap justify-center gap-6 text-sm">
           <Link
-            to="https://x.com/rasmickyy"
-            target="_blank"
-            rel="noopener noreferrer"
+            to="#"
             aria-label="X/Twitter"
             className="text-[#78716C] transition-colors hover:text-[#FA7268] dark:text-[#A1A1AA] dark:hover:text-[#FA7268]"
           >

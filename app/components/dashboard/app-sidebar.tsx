@@ -1,5 +1,4 @@
 import { IconDashboard, IconSettings, IconPalette } from "@tabler/icons-react";
-import { MessageCircle, Twitter, Youtube } from "lucide-react";
 import { Link } from "react-router";
 import { NavMain } from "./nav-main";
 import { NavSecondary } from "./nav-secondary";
@@ -11,10 +10,6 @@ import {
   SidebarHeader,
   SidebarMenu,
   SidebarMenuItem,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenuButton,
-  SidebarGroupLabel,
 } from "~/components/ui/sidebar";
 
 const data = {
@@ -64,42 +59,7 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={data.navMain} />
         
-        {/* Social Links */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel>Connect</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a 
-                    href="https://x.com/rasmickyy" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center"
-                  >
-                    <Twitter className="h-4 w-4" />
-                    <span>@rasmickyy</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a 
-                    href="https://youtube.com/@rasmic" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center"
-                  >
-                    <Youtube className="h-4 w-4" />
-                    <span>@rasmic</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        
-        <NavSecondary items={data.navSecondary} className="mt-2" />
+        <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>{user && <NavUser user={user} />}</SidebarFooter>
     </Sidebar>
