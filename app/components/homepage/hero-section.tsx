@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Link } from "react-router";
 import { motion, useReducedMotion } from "framer-motion";
 import { api } from "convex/_generated/api";
 import { useQuery } from "convex/react";
-import { Sparkles, Play, ArrowRight, Video, Palette, MessageSquare } from "lucide-react";
+import { Sparkles, ArrowRight, Eye, Video, Palette, Share2, Layers } from "lucide-react";
 import { Button } from "~/components/ui/button";
-import VideoPlayer from "../VideoPlayer";
 import { Navbar } from "./navbar";
 
 interface LoaderData {
@@ -23,14 +22,15 @@ interface LoaderData {
   } | null;
 }
 
-// Pastel paint droplets scattered around the main artwork
+// Pastel watercolor paint droplets floating around the artwork
 const PAINT_DROPLETS = [
-  { id: 1, color: "#FA7268", size: 10, top: "14%", left: "18%", delay: 0.2, duration: 4.5 },
-  { id: 2, color: "#F59E0B", size: 14, top: "28%", right: "12%", delay: 0.6, duration: 5.2 },
-  { id: 3, color: "#51CF66", size: 9, bottom: "22%", left: "12%", delay: 0.4, duration: 4.8 },
-  { id: 4, color: "#20C997", size: 12, top: "8%", right: "26%", delay: 0.8, duration: 5.6 },
-  { id: 5, color: "#845EC2", size: 11, bottom: "16%", right: "18%", delay: 0.3, duration: 4.9 },
-  { id: 6, color: "#FA7268", size: 8, top: "42%", left: "8%", delay: 0.5, duration: 5.0 },
+  { id: 1, color: "#FA7268", size: 10, top: "12%", left: "14%", delay: 0.1, duration: 4.8 },
+  { id: 2, color: "#F59E0B", size: 13, top: "24%", right: "8%", delay: 0.5, duration: 5.4 },
+  { id: 3, color: "#38B000", size: 9, bottom: "20%", left: "10%", delay: 0.3, duration: 4.6 },
+  { id: 4, color: "#00A896", size: 12, top: "6%", right: "22%", delay: 0.7, duration: 5.8 },
+  { id: 5, color: "#845EC2", size: 11, bottom: "14%", right: "16%", delay: 0.2, duration: 5.1 },
+  { id: 6, color: "#FA7268", size: 8, top: "40%", left: "6%", delay: 0.4, duration: 4.9 },
+  { id: 7, color: "#F59E0B", size: 10, bottom: "34%", right: "5%", delay: 0.8, duration: 5.3 },
 ];
 
 export default function HeroSection({ loaderData }: { loaderData: LoaderData }) {
@@ -38,18 +38,17 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
   const stats = liveStats || loaderData?.initialStats;
   const shouldReduceMotion = useReducedMotion();
 
-  // Mouse parallax state
+  // Mouse parallax state for watercolor blobs
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Track mouse coordinates relative to center of hero section
+  // Track cursor position normalized to [-1, 1] relative to center
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (shouldReduceMotion) return;
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
-    // Normalize to range [-1, 1]
     const x = (e.clientX - centerX) / (rect.width / 2);
     const y = (e.clientY - centerY) / (rect.height / 2);
     setMousePos({ x, y });
@@ -59,7 +58,7 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
     setMousePos({ x: 0, y: 0 });
   };
 
-  const dashboardTarget = loaderData?.isSignedIn ? "/dashboard" : "/sign-up";
+  const ctaLink = loaderData?.isSignedIn ? "/dashboard" : "/sign-up";
 
   return (
     <div
@@ -70,7 +69,7 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
     >
       <Navbar loaderData={loaderData} />
 
-      {/* ── Paper Grain Texture Overlay ─────────────────────────── */}
+      {/* ── Paper Grain Texture Overlay (pure SVG noise filter) ───── */}
       <svg
         className="pointer-events-none fixed inset-0 z-40 h-full w-full opacity-[0.035] mix-blend-multiply dark:opacity-[0.055] dark:mix-blend-screen"
         xmlns="http://www.w3.org/2000/svg"
@@ -83,47 +82,47 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
         <rect width="100%" height="100%" filter="url(#hero-paper-grain)" />
       </svg>
 
-      {/* ── Main Hero Content ─────────────────────────────────── */}
+      {/* ── Main Hero Layout ──────────────────────────────────────── */}
       <div className="relative z-10 mx-auto max-w-7xl px-6 pt-28 pb-16 sm:px-8 lg:px-12 lg:pt-36 lg:pb-24">
         <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-8">
           
-          {/* ── LEFT: Typography, Narrative & Actions (col-span-5/6) ── */}
+          {/* ── LEFT COLUMN: Text & Actions (takes ~45-50% width) ──── */}
           <motion.div
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             className="order-2 text-center lg:order-1 lg:col-span-5 lg:text-left xl:col-span-5"
           >
-            {/* Artistic Badge */}
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#FA7268]/20 bg-[#FA7268]/10 px-3.5 py-1.5 text-xs font-medium text-[#FA7268] backdrop-blur-sm dark:border-[#FA7268]/30 dark:bg-[#FA7268]/15">
+            {/* Pill Badge */}
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#FA7268]/25 bg-[#FA7268]/10 px-3.5 py-1.5 text-xs font-medium text-[#FA7268] backdrop-blur-sm dark:border-[#FA7268]/30 dark:bg-[#FA7268]/15">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>AI Studio for YouTube Creators</span>
+              <span>AI Content Studio for YouTube</span>
             </div>
 
-            {/* Headline in soft, elegant serif */}
+            {/* Headline: Elegant serif, soft organic typography */}
             <h1 className="font-serif mt-5 text-5xl font-normal tracking-tight text-balance sm:text-6xl lg:text-6xl xl:text-7xl leading-[1.08]">
               Paint your{" "}
               <span className="relative inline-block">
-                <span className="bg-gradient-to-r from-[#FA7268] via-[#F59E0B] via-60% to-[#845EC2] bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-[#FA7268] via-[#F59E0B] to-[#845EC2] bg-clip-text text-transparent">
                   video's story.
                 </span>
-                {/* Subtle watercolor underline stroke */}
+                {/* Organic watercolor brush stroke underline */}
                 <svg
-                  className="absolute -bottom-2 left-0 w-full overflow-visible opacity-70"
+                  className="absolute -bottom-2 left-0 w-full overflow-visible opacity-75"
                   height="8"
                   viewBox="0 0 100 8"
                   preserveAspectRatio="none"
                   aria-hidden="true"
                 >
                   <path
-                    d="M 0 5 Q 30 1, 60 4 T 100 3"
+                    d="M 0 5 Q 35 1, 65 4 T 100 3"
                     fill="none"
-                    stroke="url(#watercolor-grad)"
+                    stroke="url(#watercolor-underline)"
                     strokeWidth="3.5"
                     strokeLinecap="round"
                   />
                   <defs>
-                    <linearGradient id="watercolor-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <linearGradient id="watercolor-underline" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#FA7268" />
                       <stop offset="50%" stopColor="#F59E0B" />
                       <stop offset="100%" stopColor="#845EC2" />
@@ -133,19 +132,19 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
               </span>
             </h1>
 
-            {/* Subheadline in clean sans-serif */}
+            {/* Subheadline in clean, highly legible sans-serif */}
             <p className="mx-auto mt-6 max-w-xl text-lg text-balance text-[#57534E] leading-relaxed sm:text-xl lg:mx-0 dark:text-[#A8A29E]">
               Upload once. Get titles, thumbnails, descriptions and tweets that feel like you.
             </p>
 
-            {/* Call to Actions */}
+            {/* Call To Action Buttons */}
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
               <Button
                 asChild
                 size="lg"
                 className="group relative overflow-hidden rounded-full bg-gradient-to-r from-[#FA7268] via-[#F59E0B] to-[#FA7268] bg-[length:200%_auto] px-7 py-6 text-base font-medium text-white shadow-lg shadow-[#FA7268]/25 transition-all duration-300 hover:bg-right hover:shadow-xl hover:shadow-[#FA7268]/35 active:scale-95"
               >
-                <Link to={dashboardTarget}>
+                <Link to={ctaLink}>
                   <span>Start creating</span>
                   <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                 </Link>
@@ -157,14 +156,14 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
                 size="lg"
                 className="rounded-full border-[#E7E5E4] bg-white/70 px-6 py-6 text-base font-medium text-[#292524] backdrop-blur-md transition-all duration-200 hover:border-[#D6D3D1] hover:bg-white active:scale-95 dark:border-[#27272A] dark:bg-[#18181B]/70 dark:text-[#FAFAFA] dark:hover:bg-[#18181B]"
               >
-                <a href="#demo" className="flex items-center gap-2">
-                  <Play className="h-4 w-4 fill-current text-[#FA7268]" />
+                <a href="#features" className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-[#FA7268]" />
                   <span>See how it works</span>
                 </a>
               </Button>
             </div>
 
-            {/* Live Stats Strip */}
+            {/* Live Stats Row */}
             {stats && (
               <div className="mt-12 grid grid-cols-3 gap-3 border-t border-[#E7E5E4]/80 pt-6 text-left dark:border-[#27272A]/80">
                 <div>
@@ -195,11 +194,11 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
             )}
           </motion.div>
 
-          {/* ── RIGHT: Watercolor Hero Artwork (col-span-7/6) ──────── */}
+          {/* ── RIGHT COLUMN: Main Watercolor Artwork (takes 55-60% width) ── */}
           <div className="order-1 flex justify-center lg:order-2 lg:col-span-7 xl:col-span-7">
             <div className="relative w-full max-w-lg lg:max-w-2xl">
               
-              {/* Soft drifting watercolor blobs behind artwork */}
+              {/* Soft drifting watercolor blobs behind artwork with mouse parallax */}
               <motion.div
                 animate={
                   shouldReduceMotion
@@ -207,35 +206,35 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
                     : {
                         x: mousePos.x * 24,
                         y: mousePos.y * 24,
-                        scale: [1, 1.06, 1],
+                        scale: [1, 1.05, 1],
                       }
                 }
                 transition={{
-                  x: { type: "spring", stiffness: 40, damping: 18 },
-                  y: { type: "spring", stiffness: 40, damping: 18 },
+                  x: { type: "spring", stiffness: 45, damping: 20 },
+                  y: { type: "spring", stiffness: 45, damping: 20 },
                   scale: { duration: 9, repeat: Infinity, ease: "easeInOut" },
                 }}
                 className="pointer-events-none absolute -inset-8 -z-10"
               >
-                {/* Coral bloom */}
+                {/* Coral pigment bloom */}
                 <div className="absolute top-4 left-6 h-64 w-64 rounded-full bg-[#FA7268]/25 blur-3xl dark:bg-[#FA7268]/20" />
-                {/* Amber bloom */}
+                {/* Amber warm bloom */}
                 <div className="absolute top-16 right-8 h-60 w-60 rounded-full bg-[#F59E0B]/20 blur-3xl dark:bg-[#F59E0B]/18" />
                 {/* Leaf green & Teal bloom */}
-                <div className="absolute bottom-10 left-12 h-64 w-64 rounded-full bg-[#20C997]/20 blur-3xl dark:bg-[#20C997]/18" />
+                <div className="absolute bottom-10 left-12 h-64 w-64 rounded-full bg-[#00A896]/20 blur-3xl dark:bg-[#00A896]/18" />
                 {/* Violet bloom */}
                 <div className="absolute -bottom-6 right-10 h-72 w-72 rounded-full bg-[#845EC2]/25 blur-3xl dark:bg-[#845EC2]/22" />
               </motion.div>
 
-              {/* Floating Paint Droplets */}
+              {/* Floating Pastel Paint Droplets */}
               {!shouldReduceMotion &&
                 PAINT_DROPLETS.map((drop) => (
                   <motion.div
                     key={drop.id}
                     animate={{
-                      y: [0, 12, 0],
+                      y: [0, 10, 0],
                       x: mousePos.x * (drop.id % 2 === 0 ? 12 : -12),
-                      opacity: [0.65, 0.95, 0.65],
+                      opacity: [0.7, 0.95, 0.7],
                     }}
                     transition={{
                       y: { duration: drop.duration, repeat: Infinity, ease: "easeInOut", delay: drop.delay },
@@ -255,7 +254,7 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
                   />
                 ))}
 
-              {/* Main Artwork with Watercolor Bleed-In Transition */}
+              {/* ── Main Artwork with 1.5s Watercolor "Bleed-in" Transition ── */}
               <motion.div
                 initial={
                   shouldReduceMotion
@@ -277,7 +276,7 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
                 }}
                 className="relative overflow-hidden p-2 sm:p-4"
               >
-                {/* Hand-painted feathered frame with circular/radial mask */}
+                {/* Hand-painted feathered frame with radial gradient mask (no hard rectangle) */}
                 <div
                   style={{
                     maskImage:
@@ -302,22 +301,6 @@ export default function HeroSection({ loaderData }: { loaderData: LoaderData }) 
           </div>
         </div>
       </div>
-
-      {/* ── Demo Video Section (Anchored via #demo) ─────────────── */}
-      <section id="demo" className="relative z-10 mx-auto max-w-5xl px-6 pt-12 pb-24 sm:px-8">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-[#78716C] dark:text-[#A1A1AA]">
-            <span>See the Canvas in Action</span>
-          </div>
-          <h2 className="font-serif mt-2 text-3xl font-normal sm:text-4xl">
-            From video file to YouTube package in seconds.
-          </h2>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-[#E7E5E4] bg-white/60 p-2 shadow-2xl backdrop-blur-xl dark:border-[#27272A] dark:bg-[#18181B]/60">
-          <VideoPlayer src="https://dwdwn8b5ye.ufs.sh/f/MD2AM9SEY8Gu3B3mczu7JPAkBlwgiWGr6XbOSue4ZFzhR9QK" />
-        </div>
-      </section>
     </div>
   );
 }
