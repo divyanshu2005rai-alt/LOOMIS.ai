@@ -1,323 +1,178 @@
-# Loomis - YouTube Content Creation Assistant
+# LOOMIS.ai — AI Creative Studio for YouTube Creators
 
-An AI-powered platform that helps YouTube creators generate compelling titles, descriptions, thumbnails, and social media posts from their video content. Built with React Router v7, Convex, and OpenAI.
+> **Paint your video's story.** Upload once. Get titles, thumbnails, descriptions, and tweets that feel authentically like you.
 
-## Features
+LOOMIS.ai is an intelligent content creation workspace that helps YouTube creators transform their raw video content into high-CTR titles, engaging descriptions, stunning thumbnails, and viral social media threads. Built with React Router v7, Convex, Groq, Cloudflare Workers AI, and Clerk.
 
-### Core Functionality
-- 🎬 **Video Upload & Processing** - Upload videos up to 1GB with automatic transcription
-- 🤖 **AI Content Generation** - Generate titles, descriptions, thumbnails, and tweets
-- 🎨 **Visual Canvas Interface** - Drag-and-drop nodes for content workflow
-- 💬 **Smart Chat Integration** - Chat with AI agents to refine content
-- 👁️ **Content Preview** - See how content looks on YouTube and Twitter/X
-- 🔗 **Share System** - Share read-only canvas views with collaborators
+---
 
-### AI Agents
-- 📝 **Title Agent** - Creates catchy, SEO-optimized video titles
-- 📄 **Description Agent** - Writes comprehensive video descriptions
-- 🖼️ **Thumbnail Agent** - Generates thumbnail concepts and images with DALL-E 3
-- 🐦 **Social Media Agent** - Creates Twitter/X threads for video promotion
+## ✨ Features
 
-### Technical Features
-- 🚀 **React Router v7** - Modern full-stack React framework
-- ⚡️ **Real-time Updates** - Live canvas synchronization with Convex
-- 🔒 **TypeScript** - Full type safety throughout the codebase
-- 🎨 **Beautiful UI** - Modern design with Tailwind CSS and shadcn/ui
-- 🔐 **Authentication** - Secure user management with Clerk
-- 📱 **Responsive Design** - Works seamlessly on all devices
-- 🚢 **Vercel Ready** - Optimized for one-click deployment
+### 🎬 Video & Content Ingestion
+- **Video Upload & Processing** — Upload videos (up to 1GB) with automatic metadata extraction (duration, resolution, format).
+- **Fast Audio Transcription** — Transcribe spoken audio accurately and in seconds using **Groq Whisper** (`whisper-large-v3-turbo`).
+- **Manual Transcription Support** — Connect custom `.txt`, `.srt`, or markdown transcripts directly on the canvas.
+- **Mood Board References** — Connect YouTube video references, images, or music URLs into the workflow for tone and style inspiration.
 
-## Tech Stack
+### 🤖 Specialized AI Agents
+- 📝 **Title Agent** — Generates high-CTR (10%+), curiosity-driven, SEO-optimized video titles under 60 characters.
+- 📄 **Description Agent** — Writes 2-line, value-driven descriptions tailored to audience benefits without spammy fluff.
+- 🖼️ **Thumbnail Agent** — Extracts video frame insights with **Cloudflare Llama 3.2 Vision** and generates 1024x1024 visual concepts with **Cloudflare SDXL**.
+- 🐦 **Social Media Agent** — Crafts viral Twitter/X threads and promotion posts with hooks, timestamps, and key insights.
+
+### 🎨 Interactive Node-Based Canvas
+- **Visual Cross-Agent Workflows** — Drag, position, and connect nodes with directional arrows (e.g., connect **Tweets &rarr; Description** to align social hooks directly into your video description).
+- **In-Canvas Chat & Mentions** — Chat with specialized agents using `@TITLE_AGENT`, `@DESCRIPTION_AGENT`, `@THUMBNAIL_AGENT`, or `@TWEETS_AGENT` to refine drafts in real time.
+- **Interactive Watercolor Landing Page** — Organic visual centerpiece featuring drifting color blooms, spring-physics bubble interactions, sound synthesis, and paper-grain textures.
+- **Content Preview Modal** — Instant side-by-side previews of how your title, thumbnail, and description look on YouTube and Twitter/X.
+- **Shareable Canvas** — Generate read-only preview links to collaborate with teammates and clients.
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
-- **React Router v7** - Full-stack React framework with SSR
-- **React Flow** - Interactive canvas for visual workflows
-- **TailwindCSS v4** - Utility-first CSS framework
-- **shadcn/ui** - Modern component library with Radix UI
-- **Lucide React** - Beautiful icon library
-- **Sonner** - Toast notifications
+- **React 19 & React Router v7** — Modern full-stack framework with Server-Side Rendering (SSR).
+- **@xyflow/react (React Flow)** — Interactive node-based visual workflow canvas.
+- **Tailwind CSS v4** — High-performance utility styling.
+- **Framer Motion** — Physics-backed animations, jiggle interactions, and smooth transitions.
+- **shadcn/ui & Radix UI** — Accessible, composable UI primitives.
+- **Lucide React & Tabler Icons** — Comprehensive icon sets.
+- **Sonner** — Fluid, animated toast notifications.
 
-### Backend & Services
-- **Convex** - Real-time database and serverless functions
-- **Clerk** - Authentication and user management
-- **OpenAI** - GPT-4 for content generation, DALL-E 3 for thumbnails
-- **Groq Whisper** - Speech-to-text transcription
-- **FFmpeg** - Video processing and audio extraction
+### Backend & AI Infrastructure
+- **Convex** — Real-time reactive database, WebSocket synchronization, and serverless actions.
+- **Groq** — Ultra-fast LLM text generation (`qwen/qwen3.8-27b`, `openai/gpt-oss-120b`) and audio transcription (`whisper-large-v3-turbo`).
+- **Cloudflare Workers AI**:
+  - `@cf/stabilityai/stable-diffusion-xl-base-1.0` (SDXL text-to-image).
+  - `@cf/meta/llama-3.2-11b-vision-instruct` (Multimodal frame & image analysis).
+- **Clerk** — User authentication, session management, and organization access.
 
-### Development & Deployment
-- **Vite** - Lightning-fast build tool
-- **TypeScript** - End-to-end type safety
-- **Vercel** - Deployment platform
+---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
+- **Node.js 18+**
+- A free [Clerk](https://clerk.com) account
+- A free [Convex](https://convex.dev) account
+- A free [Groq Cloud](https://console.groq.com) API Key
+- A free [Cloudflare Workers AI](https://dash.cloudflare.com) Account ID & API Token
 
-- Node.js 18+ 
-- Clerk account for authentication
-- Convex account for database
-- OpenAI API key for content generation
-- Groq API key for transcription
+---
 
 ### Installation
 
-1. Clone the repository and install dependencies:
+1. **Clone the repository and install dependencies:**
+   ```bash
+   git clone https://github.com/your-username/youpac-ai.git
+   cd youpac-ai
+   npm install
+   ```
 
-```bash
-npm install
+2. **Set up local environment variables:**
+   Copy `.env.example` to `.env.local`:
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. **Configure your `.env.local`:**
+   ```env
+   # Convex Deployment
+   CONVEX_DEPLOYMENT=dev:<your-deployment-name>
+   VITE_CONVEX_URL=https://<your-deployment-name>.convex.cloud
+
+   # AI Credentials (Groq & Cloudflare)
+   GROQ_API_KEY=gsk_your_groq_api_key_here
+   CF_ACCOUNT_ID=your_cloudflare_account_id_here
+   CF_API_TOKEN=your_cloudflare_api_token_here
+
+   # Clerk Authentication
+   VITE_CLERK_PUBLISHABLE_KEY=pk_test_your_clerk_publishable_key
+   CLERK_SECRET_KEY=sk_test_your_clerk_secret_key
+   VITE_CLERK_FRONTEND_API_URL=https://your-app.clerk.accounts.dev
+
+   # Frontend
+   FRONTEND_URL=http://localhost:5173
+   ```
+
+4. **Initialize Convex and push backend functions:**
+   ```bash
+   npx convex dev
+   ```
+
+5. **Set backend environment variables in Convex:**
+   ```bash
+   npx convex env set GROQ_API_KEY "your_groq_api_key"
+   npx convex env set CF_ACCOUNT_ID "your_cloudflare_account_id"
+   npx convex env set CF_API_TOKEN "your_cloudflare_api_token"
+   npx convex env set VITE_CLERK_FRONTEND_API_URL "https://your-app.clerk.accounts.dev"
+   ```
+
+6. **Start the local development server:**
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 📁 Project Architecture
+
+```
+YOUPAC-AI/
+├── app/
+│   ├── components/
+│   │   ├── canvas/         # React Flow canvas, node cards, modals, and chat
+│   │   ├── dashboard/      # Projects view, settings, and sidebar navigation
+│   │   ├── homepage/       # Watercolor hero, animated canvas, features, and navbar
+│   │   ├── preview/        # Real-time YouTube & Twitter mockups
+│   │   └── ui/             # Radix & shadcn/ui components
+│   ├── routes/             # React Router v7 routes (home, dashboard, canvas, share)
+│   ├── lib/                # Utility helpers, metadata extraction, formatting
+│   └── root.tsx            # App root, Clerk provider, Convex provider, fonts
+├── convex/
+│   ├── aiProviders.ts      # Groq text generation & Cloudflare SDXL/Vision clients
+│   ├── aiHackathon.ts      # Agent prompts, content synthesis & context assembly
+│   ├── transcription.ts    # Groq Whisper audio transcription
+│   ├── thumbnail.ts        # Cloudflare Vision frame analysis & SDXL image generation
+│   ├── schema.ts           # Convex database schema (projects, videos, agents, chats)
+│   └── projects.ts         # Project creation, listing, and archiving
+└── public/                 # Static visual assets, fonts, icons
 ```
 
-2. Copy the environment file and configure your credentials:
+---
 
-```bash
-cp .env.example .env.local
-```
+## 💡 How the Visual Canvas Works
 
-3. Set up your environment variables in `.env.local`:
+1. **Upload or Link Content**:
+   Add a Video node, paste a transcript, or create a Mood Board with creative references.
+2. **Connect Agents with Arrows**:
+   Connect your video node to the **Title**, **Description**, **Thumbnail**, and **Social Posts** agents.
+3. **Cross-Agent Chaining**:
+   Connect arrows between agents (e.g. `Tweets` &rarr; `Description` or `Title` &rarr; `Thumbnail`) to pipe generated copy from one agent directly into another for unified voice and framing.
+4. **Iterate with In-Canvas Chat**:
+   Click any agent node or open the floating chat to request specific refinements (e.g. *"Make the title more controversial"* or *"Focus the description on productivity benefits"*).
+5. **Preview & Export**:
+   Open the Preview modal to verify title lengths, thumbnail contrast, and tweet thread flow, then copy or export with one click.
 
-```bash
-# Convex Configuration
-CONVEX_DEPLOYMENT=your_convex_deployment_here
-VITE_CONVEX_URL=your_convex_url_here
+---
 
-# Clerk Authentication
-VITE_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key_here
-CLERK_SECRET_KEY=your_clerk_secret_key_here
+## 🚢 Building & Deploying
 
-# OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Groq Configuration
-GROQ_API_KEY=your_groq_api_key_here
-
-# Frontend URL
-FRONTEND_URL=http://localhost:5173
-```
-
-4. Initialize Convex:
-
-```bash
-npx convex dev
-```
-
-5. Set up environment variables in Convex dashboard:
-   - `OPENAI_API_KEY`
-   - `GROQ_API_KEY`
-
-### Development
-
-Start the development server with HMR:
-
-```bash
-npm run dev
-```
-
-Your application will be available at `http://localhost:5173`.
-
-## Building for Production
-
-Create a production build:
-
+### Build for Production
 ```bash
 npm run build
 ```
 
-## Deployment
-
-### Vercel Deployment (Recommended)
-
-This starter kit is optimized for Vercel deployment with the `@vercel/react-router` preset:
-
-1. Connect your repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on push to main branch
-
-The `react-router.config.ts` includes the Vercel preset for seamless deployment.
-
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `npm run build`
-
-```
-├── package.json
-├── package-lock.json
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## How It Works
-
-### 1. Upload Video
-- Upload any video file (up to 1GB)
-- Automatic transcription using Groq Whisper
-- Extract video metadata (duration, resolution, etc.)
-
-### 2. Generate Content
-- AI agents analyze your video and transcription
-- Generate optimized titles, descriptions, thumbnails, and social posts
-- Each agent can be regenerated individually
-
-### 3. Refine with Chat
-- Use @mentions to chat with specific agents
-- Request changes or regenerate content
-- AI understands context from your video
-
-### 4. Preview & Export
-- Preview how content looks on YouTube and Twitter/X
-- Copy content to clipboard
-- Export as markdown files
-- Share canvas with collaborators
-
-## Architecture
-
-### Key Routes
-- `/` - Homepage with features overview
-- `/sign-in` & `/sign-up` - Authentication pages
-- `/dashboard` - Projects dashboard
-- `/dashboard/settings` - Profile configuration
-- `/canvas/:projectId` - Interactive content canvas
-- `/share/:shareId` - Read-only shared canvas
-
-### Key Features
-
-#### Canvas System
-- Visual workflow with draggable nodes
-- Real-time collaboration support
-- Auto-save every 5 seconds
-- Connection validation between nodes
-
-#### AI Content Generation
-- Context-aware generation using video transcription
-- Profile-based personalization
-- Batch generation with "Generate All"
-- Individual regeneration per agent
-
-#### Profile System
-- Channel information for personalized content
-- Tone and style preferences
-- Target audience configuration
-- Progress tracking
-
-## Environment Variables
-
-### Required for Production
-
-#### Application Variables
-- `VITE_CONVEX_URL` - Your Convex client URL
-- `VITE_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
-- `CLERK_SECRET_KEY` - Clerk secret key for server-side auth
-- `FRONTEND_URL` - Your production frontend URL
-
-#### Convex Environment Variables (set in Convex dashboard)
-- `OPENAI_API_KEY` - OpenAI API key for GPT-4 and DALL-E 3
-- `GROQ_API_KEY` - Groq API key for Whisper transcription
-
-## Project Structure
-
-```
-├── app/
-│   ├── components/         
-│   │   ├── ui/           # shadcn/ui components
-│   │   ├── canvas/       # Canvas and node components
-│   │   ├── homepage/     # Landing page sections
-│   │   ├── dashboard/    # Dashboard layout components
-│   │   └── preview/      # YouTube/Twitter preview components
-│   ├── routes/           # React Router routes
-│   │   ├── dashboard/    # Protected dashboard routes
-│   │   └── canvas/       # Canvas route and share
-│   ├── lib/              # Utility functions
-│   └── styles/           # Global styles
-├── convex/               # Backend functions
-│   ├── schema.ts         # Database schema
-│   ├── videos.ts         # Video operations
-│   ├── agents.ts         # AI agent functions
-│   ├── projects.ts       # Project management
-│   └── aiHackathon.ts    # AI generation logic
-├── public/               # Static assets
-└── docs/                 # Documentation
-```
-
-## Key Dependencies
-
-- `react` & `react-dom` v19 - Latest React
-- `react-router` v7 - Full-stack React framework
-- `@clerk/react-router` - Authentication
-- `convex` - Real-time database
-- `@xyflow/react` - Interactive canvas (React Flow)
-- `openai` - GPT-4 and DALL-E 3 integration
-- `@vercel/react-router` - Vercel deployment
-- `tailwindcss` v4 - Styling
-- `@radix-ui/*` - UI primitives
-- `sonner` - Toast notifications
-- `ffmpeg-wasm` - Client-side video processing
-
-## Scripts
-
-- `npm run dev` - Start development server with Convex
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run typecheck` - Run TypeScript checks
-
-## Screenshots
-
-### Dashboard
-Projects dashboard with grid view and quick actions.
-
-### Canvas
-Interactive visual workflow for content generation.
-
-### Content Preview
-See how your content looks on YouTube and Twitter/X.
-
-## Roadmap
-
-- [ ] YouTube URL import support
-- [ ] Batch export functionality
-- [ ] Team collaboration features
-- [ ] Analytics integration
-- [ ] More social media platforms
-- [ ] Custom AI prompts
-- [ ] Video trimming tools
-
-## Contributing
-
-We welcome contributions! Please:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Deploy on Vercel
+The repository includes configuration for the `@vercel/react-router` preset:
+1. Push your repository to GitHub.
+2. Import the project into [Vercel](https://vercel.com).
+3. Set your environment variables (`VITE_CONVEX_URL`, `VITE_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, etc.).
+4. Deploy!
 
 ---
 
-**Transform your YouTube content creation workflow with AI.** Loomis helps creators save hours by automatically generating optimized titles, descriptions, thumbnails, and social media posts from their video content.
-
-Built with ❤️ using React Router v7, Convex, OpenAI, and Groq.
+## 📄 License
+This project is licensed under the [MIT License](LICENSE).
